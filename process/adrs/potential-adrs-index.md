@@ -11,14 +11,14 @@
 
 ## Alta prioridade (must-document/)
 
-| Título | Categoria | Score | Arquivo |
-| --- | --- | --- | --- |
-| Outbox transacional no MySQL existente | Camada de dados | 125 | [outbox-transacional-no-mysql.md](potential-adrs/must-document/WEBHOOKS/outbox-transacional-no-mysql.md) |
-| Worker em processo separado com polling | Infraestrutura | 110 | [worker-em-processo-separado-com-polling.md](potential-adrs/must-document/WEBHOOKS/worker-em-processo-separado-com-polling.md) |
-| Retry com backoff exponencial e DLQ em tabela separada | Confiabilidade | 105 | [retry-com-backoff-exponencial-e-dlq.md](potential-adrs/must-document/WEBHOOKS/retry-com-backoff-exponencial-e-dlq.md) |
-| Autenticação HMAC-SHA256 com secret por endpoint e rotação | Segurança | 125 | [autenticacao-hmac-sha256-com-secret-por-endpoint.md](potential-adrs/must-document/WEBHOOKS/autenticacao-hmac-sha256-com-secret-por-endpoint.md) |
-| Entrega at-least-once com X-Event-Id | Contrato de integração | 125 | [entrega-at-least-once-com-x-event-id.md](potential-adrs/must-document/WEBHOOKS/entrega-at-least-once-com-x-event-id.md) |
-| Reuso dos padrões existentes do projeto | Framework e plataforma | 125 | [reuso-dos-padroes-do-projeto.md](potential-adrs/must-document/WEBHOOKS/reuso-dos-padroes-do-projeto.md) |
+| Título | Categoria | Score | Arquivo | ADR gerada |
+| --- | --- | --- | --- | --- |
+| Outbox transacional no MySQL existente | Camada de dados | 125 | [outbox-transacional-no-mysql.md](potential-adrs/must-document/WEBHOOKS/outbox-transacional-no-mysql.md) | [ADR-001](../../docs/adrs/ADR-001-outbox-transacional-no-mysql.md) |
+| Worker em processo separado com polling | Infraestrutura | 110 | [worker-em-processo-separado-com-polling.md](potential-adrs/must-document/WEBHOOKS/worker-em-processo-separado-com-polling.md) | [ADR-002](../../docs/adrs/ADR-002-worker-em-processo-separado-com-polling.md) |
+| Retry com backoff exponencial e DLQ em tabela separada | Confiabilidade | 105 | [retry-com-backoff-exponencial-e-dlq.md](potential-adrs/must-document/WEBHOOKS/retry-com-backoff-exponencial-e-dlq.md) | [ADR-003](../../docs/adrs/ADR-003-retry-com-backoff-exponencial-e-dlq.md) |
+| Autenticação HMAC-SHA256 com secret por endpoint e rotação | Segurança | 125 | [autenticacao-hmac-sha256-com-secret-por-endpoint.md](potential-adrs/must-document/WEBHOOKS/autenticacao-hmac-sha256-com-secret-por-endpoint.md) | [ADR-004](../../docs/adrs/ADR-004-autenticacao-hmac-sha256-com-secret-por-endpoint.md) |
+| Entrega at-least-once com X-Event-Id | Contrato de integração | 125 | [entrega-at-least-once-com-x-event-id.md](potential-adrs/must-document/WEBHOOKS/entrega-at-least-once-com-x-event-id.md) | [ADR-005](../../docs/adrs/ADR-005-entrega-at-least-once-com-x-event-id.md) |
+| Reuso dos padrões existentes do projeto | Framework e plataforma | 125 | [reuso-dos-padroes-do-projeto.md](potential-adrs/must-document/WEBHOOKS/reuso-dos-padroes-do-projeto.md) | [ADR-006](../../docs/adrs/ADR-006-reuso-dos-padroes-do-projeto.md) |
 
 Os 6 cobrem as 6 decisões principais listadas no enunciado (requisito 4).
 
@@ -27,6 +27,8 @@ Os 6 cobrem as 6 decisões principais listadas no enunciado (requisito 4).
 | Título | Categoria | Score | Arquivo |
 | --- | --- | --- | --- |
 | Modelo de autorização do módulo de webhooks | Segurança | 95 | [modelo-de-autorizacao-do-modulo-de-webhooks.md](potential-adrs/consider/WEBHOOKS/modelo-de-autorizacao-do-modulo-de-webhooks.md) |
+
+**Decisão do time:** não vira ADR. Os riscos vão para o FDD e o PRD: CRUD aberto a qualquer usuário autenticado, falta de vínculo entre usuário e customer, e registro público que aceita ADMIN.
 
 ## Inventário completo de candidatos
 
@@ -99,8 +101,25 @@ Pontos da reunião que não são decisões arquiteturais e não entram no invent
 - Total com arquivo: **7**.
 - Decisões principais do enunciado cobertas: **6 de 6**.
 
-## Decisões pendentes para a Fase 3
+## Decisões do time antes da Fase 3
 
-1. **Promover o *consider*?** "Modelo de autorização do módulo" pode virar ADR-007, ser incorporado como consequência na ADR de reuso de padrões, ou ficar só no FDD e no PRD como risco.
-2. **Responder ou manter os `[NEEDS INPUT]`.** O gerador limita a 4 por ADR, e o pacote final não deve ter marcadores abertos. Cada um vira resposta, questão em aberto no RFC ou limitação registrada na ADR.
-3. **Data das ADRs.** A transcrição informa apenas "quinta-feira, 09:00".
+1. **Consider "Modelo de autorização":** fica só no FDD e no PRD como risco, e não vira ADR.
+2. **"5 tentativas":** confirmado que são 5 retentativas após o envio inicial, ou seja, no máximo 6 chamadas HTTP.
+3. **Data das ADRs:** referência à reunião (`TRANSCRICAO.md`, "quinta-feira, 09:00"), já que a transcrição não informa data de calendário.
+4. **Demais `[NEEDS INPUT]`:** cada um virou limitação registrada nas Consequências da ADR e questão em aberto para o RFC.
+
+### Questões levadas ao RFC
+
+| Origem | Questão |
+| --- | --- |
+| ADR-001 | Destino dos eventos já gravados quando o webhook é desativado ou removido |
+| ADR-001 | Teto de latência aceitável para o acréscimo na transação de mudança de status |
+| ADR-002 | Recuperação de eventos presos em processamento quando o worker cai |
+| ADR-002 | Monitoramento de que o worker está vivo |
+| ADR-002 | Ordem por pedido quando um evento anterior está em retentativa |
+| ADR-003 | Quais respostas HTTP, além da falta de resposta, contam como falha |
+| ADR-003 | Registro de auditoria do replay só em log ou também persistido |
+| ADR-003, ADR-005 | Se o replay mantém o identificador original do evento |
+| ADR-004 | Como assinar durante a carência de 24 h, com duas secrets válidas |
+| ADR-004 | `X-Timestamp` fora da assinatura |
+| ADR-005 | Mesmo identificador de evento quando há dois webhooks do mesmo customer |
