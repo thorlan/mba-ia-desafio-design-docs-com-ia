@@ -2,9 +2,9 @@
 
 **Status:** Aceito
 **Data:** Reunião técnica de quinta-feira, 09:00 (ver `TRANSCRICAO.md`)
-**ADRs relacionadas:** [ADR-005](ADR-005-entrega-at-least-once-com-x-event-id.md), [ADR-006](ADR-006-reuso-dos-padroes-do-projeto.md)
-
----
+**Relacionada a:**
+- [ADR-002: Worker em processo separado com polling](./ADR-002-worker-em-processo-separado-com-polling.md)
+- [ADR-005: Entrega at-least-once com X-Event-Id para deduplicação](./ADR-005-entrega-at-least-once-com-x-event-id.md)
 
 ## Contexto e Problema
 
@@ -27,11 +27,9 @@ O histórico reforça o cuidado com segredos: um cliente já vazou uma secret nu
 
 ## Decisão
 
-Alternativa escolhida: **HMAC-SHA256 calculado sobre o corpo da requisição, com secret única por endpoint de webhook e rotação com carência de 24 horas** ([09:22] Sofia).
+Alternativa escolhida: **HMAC-SHA256 calculado sobre o corpo da requisição, com secret única por endpoint de webhook e rotação com carência de 24 horas** ([09:22] Sofia), porque é um padrão que qualquer cliente verifica ([09:20] Sofia) e um vazamento compromete um único endpoint ([09:21] Sofia).
 
-A assinatura vai no header `X-Signature` ([09:20] Sofia). A secret é gerada pela plataforma e entregue ao cliente na criação do webhook ([09:31] Marcos). Ela fica guardada junto da configuração do endpoint, com a URL, o customer e o estado ativo ([09:21] Bruno, [09:21] Sofia). O cliente pode pedir uma nova secret pela API; a anterior continua válida por 24 horas em paralelo e depois é invalidada ([09:21] Sofia).
-
-Só são aceitas URLs com TLS. Essa exigência foi tratada na reunião como validação de entrada, não como decisão arquitetural ([09:23] Sofia).
+A assinatura vai no header `X-Signature` ([09:20] Sofia). A secret é gerada pela plataforma e entregue ao cliente na criação do webhook ([09:31] Marcos). Ela fica guardada junto da configuração do endpoint ([09:21] Bruno, [09:21] Sofia). O cliente pode pedir uma nova secret pela API; a anterior continua válida por 24 horas em paralelo e depois é invalidada ([09:21] Sofia). Só são aceitas URLs com TLS. Essa exigência foi tratada na reunião como validação de entrada, não como decisão arquitetural ([09:23] Sofia).
 
 ## Prós e Contras das Alternativas
 
@@ -51,7 +49,7 @@ Só são aceitas URLs com TLS. Essa exigência foi tratada na reunião como vali
 
 **Positivas.** Cada cliente verifica a origem e a integridade de cada entrega com uma técnica conhecida. Um vazamento, como o que já aconteceu ([09:22] Diego), afeta um único endpoint e pode ser corrigido por rotação, sem janela de falha.
 
-**Negativas.** Diferente das senhas de usuário, guardadas como hash irreversível, a secret precisa ficar recuperável, porque o worker a usa para assinar cada envio. A proteção dela em repouso ficou para a revisão de segurança ([09:46] Sofia). O logger atual mascara senhas e tokens, mas não secrets, então a implementação precisa estender o mascaramento. A assinatura cobre só o corpo da requisição, e por isso o timestamp de envio mandado em header ([09:44] Diego) não é autenticado por si só. A reunião também não definiu como a mensagem é assinada durante as 24 horas em que duas secrets são válidas. Os dois pontos ficam como questões em aberto no RFC.
+**Negativas.** Diferente das senhas de usuário, guardadas como hash irreversível, a secret precisa ficar recuperável, porque o worker a usa para assinar cada envio. A reunião não definiu como a secret é protegida em repouso. O logger atual mascara senhas e tokens, mas não secrets. A assinatura cobre só o corpo da requisição, e por isso o timestamp de envio mandado em header ([09:44] Diego) não é autenticado por si só. A reunião também não definiu como a mensagem é assinada durante as 24 horas em que duas secrets são válidas. Os três pontos ficam como questões em aberto no RFC.
 
 **Trade-off explícito:** aceitamos a complexidade de gerenciar secrets recuperáveis por endpoint, com rotação, em troca de limitar o alcance de um vazamento e oferecer ao cliente uma verificação padrão de mercado.
 

@@ -2,9 +2,14 @@
 
 **Status:** Aceito
 **Data:** Reunião técnica de quinta-feira, 09:00 (ver `TRANSCRICAO.md`)
-**ADRs relacionadas:** [ADR-001](ADR-001-outbox-transacional-no-mysql.md), [ADR-003](ADR-003-retry-com-backoff-exponencial-e-dlq.md)
+**Depende de:** [ADR-001: Outbox transacional no MySQL existente](./ADR-001-outbox-transacional-no-mysql.md)
+**Usada por:**
+- [ADR-003: Retry com backoff exponencial e DLQ em tabela separada](./ADR-003-retry-com-backoff-exponencial-e-dlq.md)
+- [ADR-005: Entrega at-least-once com X-Event-Id para deduplicação](./ADR-005-entrega-at-least-once-com-x-event-id.md)
 
----
+**Relacionada a:**
+- [ADR-004: Autenticação HMAC-SHA256 com secret por endpoint e rotação](./ADR-004-autenticacao-hmac-sha256-com-secret-por-endpoint.md)
+- [ADR-006: Reuso dos padrões existentes do projeto](./ADR-006-reuso-dos-padroes-do-projeto.md)
 
 ## Contexto e Problema
 
@@ -30,11 +35,9 @@ Hoje a aplicação roda num único processo HTTP, com desligamento gracioso. Se 
 
 ## Decisão
 
-Alternativa escolhida: **worker em processo separado, com polling a cada 2 segundos**. Os 2 segundos cabem com folga na meta de 10 ([09:09] Diego, [09:10] Marcos), e a decisão foi registrada em [09:10] Larissa.
+Alternativa escolhida: **worker em processo separado, com polling a cada 2 segundos**, porque isola as entregas do ciclo de vida da API ([09:11] Diego) e os 2 segundos cabem com folga na meta de 10 ([09:09] Diego, [09:10] Marcos). A decisão foi registrada em [09:10] Larissa.
 
-O worker tem entry point próprio e um script de execução ao lado do servidor HTTP ([09:11] Larissa). Usa o mesmo banco e o mesmo código, mas com a sua própria conexão de ORM, porque essa conexão é por processo ([09:30] Bruno). A cada ciclo ele lê em lote pequeno os eventos pendentes mais antigos, processa e registra o resultado ([09:08] Diego, [09:09] Diego).
-
-Roda uma única instância. A ordem de entrega segue a ordem de gravação, o que dá ordem por pedido, sem garantia de ordem global ([09:12] Diego, [09:13] Larissa). Escalar para vários workers ficou para o futuro ([09:13] Diego).
+O worker roda como processo próprio ao lado do servidor HTTP ([09:11] Larissa), com o mesmo banco e a mesma stack ([09:11] Diego). A cada ciclo ele lê em lote pequeno os eventos pendentes mais antigos, processa e registra o resultado ([09:08] Diego, [09:09] Diego). Roda uma única instância. A ordem de entrega segue a ordem de gravação, o que dá ordem por pedido, sem garantia de ordem global ([09:12] Diego, [09:13] Larissa). Escalar para vários workers ficou para o futuro ([09:13] Diego).
 
 ## Prós e Contras das Alternativas
 
@@ -52,15 +55,15 @@ Roda uma única instância. A ordem de entrega segue a ordem de gravação, o qu
 ### Worker dentro do processo da API
 - Pró: um único processo para implantar e monitorar.
 - Contra: um restart da API derruba o worker junto ([09:11] Diego).
-- Contra: disputa recursos com o atendimento HTTP.
+- Contra: contraria o pedido explícito de processo separado: "Só não pode ser o mesmo processo" ([09:11] Diego).
 
 ## Consequências
 
 **Positivas.** O pior caso de espera pela leitura fica em torno de 2 segundos, dentro da meta. Deploys da API e do worker são independentes. E, com o worker parado, os eventos acumulam na outbox sem se perder.
 
-**Negativas.** O sistema passa a ter dois processos para implantar e operar, e o worker exige a mesma configuração de ambiente da API. A ordem por pedido vale apenas no caminho feliz: quando um evento entra em retentativa ([ADR-003](ADR-003-retry-com-backoff-exponencial-e-dlq.md)), o seguinte do mesmo pedido pode ser entregue antes. Com uma instância e timeout de 10 segundos por chamada ([09:42] Diego), um cliente lento atrasa os demais do mesmo ciclo. A reunião não tratou a recuperação de eventos presos em processamento quando o worker cai, nem o monitoramento de que o worker está vivo. Os dois pontos ficam como questões em aberto no RFC.
+**Negativas.** O sistema passa a ter dois processos para implantar e operar, e o worker exige a mesma configuração de ambiente da API. A reunião aceitou ordem só por pedido e enquanto houver um único worker ([09:13] Larissa), mas não tratou o caso de um evento em retentativa ([ADR-003](ADR-003-retry-com-backoff-exponencial-e-dlq.md)): o seguinte do mesmo pedido pode ser entregue antes dele. Com uma instância e timeout de 10 segundos por chamada ([09:42] Diego), um cliente lento atrasa os demais do mesmo ciclo. A reunião também não tratou a recuperação de eventos presos em processamento quando o worker cai, nem o monitoramento de que o worker está vivo. Os três pontos ficam como questões em aberto no RFC.
 
-**Trade-off explícito:** trocamos reatividade imediata e escala horizontal por simplicidade operacional. A latência de até ~2 segundos é aceita ([09:10] Larissa), e a garantia de ordem é por pedido e só no caminho feliz.
+**Trade-off explícito:** trocamos reatividade imediata e escala horizontal por simplicidade operacional. A latência de até ~2 segundos é aceita ([09:10] Larissa), e a garantia de ordem é só por pedido e enquanto houver um único worker ([09:13] Larissa).
 
 ## Referências
 
@@ -68,4 +71,4 @@ Roda uma única instância. A ordem de entrega segue a ordem de gravação, o qu
 - `src/config/database.ts:4` (criação do client do ORM; cada processo cria o seu)
 - `src/config/env.ts:27` (validação do ambiente na carga, herdada pelo worker)
 - `package.json:10` (scripts de execução, onde entra o script do worker)
-- Transcrição: [09:02] Marcos, [09:08] Diego, [09:09] Diego, [09:10] Larissa, [09:10] Marcos, [09:11] Diego, [09:11] Larissa, [09:12] Diego, [09:13] Diego, [09:13] Larissa, [09:14] Marcos, [09:30] Bruno, [09:42] Diego
+- Transcrição: [09:02] Marcos, [09:08] Diego, [09:09] Diego, [09:10] Larissa, [09:10] Marcos, [09:11] Diego, [09:11] Larissa, [09:12] Diego, [09:13] Diego, [09:13] Larissa, [09:14] Marcos, [09:42] Diego

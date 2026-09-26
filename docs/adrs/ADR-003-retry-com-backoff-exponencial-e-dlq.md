@@ -2,9 +2,12 @@
 
 **Status:** Aceito
 **Data:** Reunião técnica de quinta-feira, 09:00 (ver `TRANSCRICAO.md`)
-**ADRs relacionadas:** [ADR-001](ADR-001-outbox-transacional-no-mysql.md), [ADR-002](ADR-002-worker-em-processo-separado-com-polling.md), [ADR-005](ADR-005-entrega-at-least-once-com-x-event-id.md)
+**Depende de:**
+- [ADR-001: Outbox transacional no MySQL existente](./ADR-001-outbox-transacional-no-mysql.md)
+- [ADR-002: Worker em processo separado com polling](./ADR-002-worker-em-processo-separado-com-polling.md)
 
----
+**Usada por:** [ADR-005: Entrega at-least-once com X-Event-Id para deduplicação](./ADR-005-entrega-at-least-once-com-x-event-id.md)
+**Relacionada a:** [ADR-006: Reuso dos padrões existentes do projeto](./ADR-006-reuso-dos-padroes-do-projeto.md)
 
 ## Contexto e Problema
 
@@ -26,21 +29,19 @@ A política também precisa dizer o que acontece com um evento que esgotou as te
 
 1. **Backoff exponencial com teto de tentativas e DLQ em tabela separada.**
 2. **Retry indefinido com backoff.**
-3. **Teto de 3 tentativas, com a falha marcada na própria outbox.**
+3. **Teto de 3 tentativas.**
 
 ## Decisão
 
-Alternativa escolhida: **backoff exponencial com teto de tentativas e DLQ em tabela separada** ([09:17] Larissa).
+Alternativa escolhida: **backoff exponencial com teto de tentativas e DLQ em tabela separada** ([09:17] Larissa), porque cobre indisponibilidades de horas ([09:16] Diego) sem deixar eventos pendurados para sempre ([09:15] Diego). Depois do envio inicial, uma entrega com falha é retentada em até **5 novas tentativas**, com intervalos de 1 minuto, 5 minutos, 30 minutos, 2 horas e 12 horas ([09:17] Diego). No máximo, são **6 chamadas HTTP por evento**, distribuídas ao longo de 14h36 entre a primeira falha e a última tentativa, as "quase 15 horas" citadas em [09:17] Diego. Essa é a interpretação adotada neste pacote de documentos, por ser a única que fecha com a soma dos intervalos e com o exemplo de "três vezes em 30 minutos" ([09:16] Diego). Uma chamada sem resposta em 10 segundos conta como falha ([09:42] Diego).
 
-Depois do envio inicial, uma entrega com falha é retentada em até **5 novas tentativas**, com intervalos de 1 minuto, 5 minutos, 30 minutos, 2 horas e 12 horas ([09:17] Diego). No máximo, são **6 chamadas HTTP por evento**, distribuídas ao longo de 14h36 entre a primeira falha e a última tentativa, as "quase 15 horas" citadas em [09:17] Diego. Essa leitura, confirmada com o time na revisão, é a única que fecha com a soma dos intervalos e com o exemplo de "três vezes em 30 minutos" ([09:16] Diego). Uma chamada sem resposta em 10 segundos conta como falha ([09:42] Diego).
-
-Esgotadas as tentativas, o evento vai para uma **DLQ em tabela própria**, com payload, motivo da falha e momento ([09:18] Diego). O reprocessamento é **manual**, por uma operação administrativa que devolve o evento à outbox como pendente ([09:18] Diego). Ela exige o papel de administrador, reaproveitando o controle de acesso por papel que já existe, e registra quem a executou ([09:36] Sofia, [09:36] Larissa).
+Esgotadas as tentativas, o evento vai para uma **DLQ em tabela própria**, em vez de ficar marcado como falho na outbox ([09:17] Larissa), porque isso deixa mais limpa a leitura da outbox principal e guarda evidência para debug e reprocessamento ([09:18] Diego). O reprocessamento é **manual**, por uma operação administrativa que devolve o evento à outbox como pendente ([09:18] Diego). Ela exige o papel de administrador, reaproveitando o controle de acesso por papel que já existe, e registra quem a executou ([09:36] Sofia, [09:36] Larissa).
 
 ## Prós e Contras das Alternativas
 
 ### Backoff exponencial com teto e DLQ separada
 - Pró: cobre quedas de até ~15 horas sem intervenção humana.
-- Pró: a outbox fica só com eventos em andamento, e a DLQ concentra o que exige ação.
+- Pró: a DLQ separa os eventos esgotados dos pendentes e concentra o que exige ação.
 - Contra: um evento pode chegar com horas de atraso.
 - Contra: o reprocessamento depende de um administrador.
 
@@ -49,10 +50,10 @@ Esgotadas as tentativas, o evento vai para uma **DLQ em tabela própria**, com p
 - Contra: eventos ficam pendurados para sempre quando o cliente some ([09:15] Diego).
 - Contra: a outbox acumula eventos sem previsão de término.
 
-### Teto de 3 tentativas com falha marcada na outbox
-- Pró: libera recursos mais cedo e usa uma única tabela.
+### Teto de 3 tentativas
+- Pró: mais agressivo, desiste do evento mais cedo ([09:16] Bruno).
 - Contra: com essa progressão, cobre só ~36 minutos, então "3 é pouco" ([09:16] Diego).
-- Contra: misturar eventos falhos com pendentes deixa a leitura do worker menos limpa ([09:18] Diego).
+- Contra: não cobre a manutenção planejada de duas horas que um cliente já teve ([09:16] Diego).
 
 ## Consequências
 

@@ -2,9 +2,12 @@
 
 **Status:** Aceito
 **Data:** Reunião técnica de quinta-feira, 09:00 (ver `TRANSCRICAO.md`)
-**ADRs relacionadas:** [ADR-002](ADR-002-worker-em-processo-separado-com-polling.md), [ADR-003](ADR-003-retry-com-backoff-exponencial-e-dlq.md), [ADR-005](ADR-005-entrega-at-least-once-com-x-event-id.md), [ADR-006](ADR-006-reuso-dos-padroes-do-projeto.md)
+**Usada por:**
+- [ADR-002: Worker em processo separado com polling](./ADR-002-worker-em-processo-separado-com-polling.md)
+- [ADR-003: Retry com backoff exponencial e DLQ em tabela separada](./ADR-003-retry-com-backoff-exponencial-e-dlq.md)
+- [ADR-005: Entrega at-least-once com X-Event-Id para deduplicação](./ADR-005-entrega-at-least-once-com-x-event-id.md)
 
----
+**Relacionada a:** [ADR-006: Reuso dos padrões existentes do projeto](./ADR-006-reuso-dos-padroes-do-projeto.md)
 
 ## Contexto e Problema
 
@@ -30,9 +33,9 @@ O problema é decidir como tirar a notificação de dentro desse fluxo sem perde
 
 ## Decisão
 
-Alternativa escolhida: **outbox transacional no MySQL existente**. Com ela, se a transação commita o evento existe, e se ela sofre rollback o evento some junto ([09:06] Diego). Isso é feito sem subir infraestrutura nova ([09:07] Diego, [09:08] Larissa).
+Alternativa escolhida: **outbox transacional no MySQL existente**, porque se a transação commita o evento existe, e se ela sofre rollback o evento some junto ([09:06] Diego), sem subir infraestrutura nova ([09:07] Diego, [09:08] Larissa).
 
-O evento é gravado pela transação corrente, por meio de uma função que a recebe como parâmetro ([09:41] Bruno), e uma falha ao gravá-lo desfaz a mudança de status ([09:40] Bruno). Duas regras definem o que é gravado. Só entra evento se algum webhook do customer assina o novo status ([09:34] Bruno). E o payload é gravado já montado, como um retrato do pedido naquele momento ([09:52] Larissa, [09:52] Diego). A entrega HTTP fica a cargo de um worker separado ([ADR-002](ADR-002-worker-em-processo-separado-com-polling.md)).
+O evento é gravado pela própria transação de mudança de status ([09:41] Bruno), e uma falha ao gravá-lo desfaz a mudança de status ([09:40] Bruno). Duas regras definem o que é gravado. Só entra evento se algum webhook do customer assina o novo status ([09:34] Bruno). E o payload é gravado já montado, como um retrato do pedido naquele momento ([09:52] Larissa, [09:52] Diego). A entrega HTTP fica a cargo de um worker separado ([ADR-002](ADR-002-worker-em-processo-separado-com-polling.md)).
 
 ## Prós e Contras das Alternativas
 
@@ -52,7 +55,7 @@ O evento é gravado pela transação corrente, por meio de uma função que a re
 - Pró: mecanismo de entrega reativo, sem polling.
 - Contra: exige subir e operar infraestrutura nova ([09:07] Larissa).
 - Contra: *overengineering* para um time pequeno ([09:07] Diego).
-- Contra: publicar fora do banco não é atômico com o commit da transação.
+- Contra: publicar fora da transação "perde a garantia toda" ([09:41] Diego).
 
 ## Consequências
 
@@ -60,7 +63,7 @@ O evento é gravado pela transação corrente, por meio de uma função que a re
 
 **Negativas.** A transação de mudança de status passa a consultar as assinaturas do customer e a gravar o evento, e a reunião não definiu um teto de latência aceitável para esse acréscimo. A tabela cresce continuamente até que o arquivamento, adiado ([09:08] Diego), seja feito. Filtrar na inserção significa que um webhook criado ou alterado depois da mudança não recebe eventos retroativos. O destino de eventos já gravados para um webhook desativado não foi tratado na reunião e fica como questão em aberto no RFC.
 
-**Trade-off explícito:** aceitamos custo extra na transação de status e alguns segundos de latência em troca de consistência forte entre "status mudou" e "evento registrado", sem operar infraestrutura nova.
+**Trade-off explícito:** aceitamos custo extra na transação de status e alguns segundos de latência em troca de consistência forte entre a mudança de status e o registro do evento, sem operar infraestrutura nova.
 
 ## Referências
 
@@ -68,5 +71,5 @@ O evento é gravado pela transação corrente, por meio de uma função que a re
 - `src/modules/orders/order.service.ts:24` (tipo do client transacional, já repassado a funções auxiliares)
 - `src/modules/orders/order.status.ts:3` (máquina de estados que define as transições que geram evento)
 - `prisma/schema.prisma:74` (modelo de pedido, fonte dos dados do evento)
-- `docker-compose.yml` (MySQL 8.0 como única infraestrutura existente)
-- Transcrição: [09:04] Bruno, [09:06] Diego, [09:07] Larissa, [09:07] Diego, [09:08] Larissa, [09:34] Bruno, [09:40] Bruno, [09:41] Diego, [09:41] Bruno, [09:52] Larissa, [09:52] Diego
+- `docker-compose.yml:3` (MySQL 8.0 como única infraestrutura existente)
+- Transcrição: [09:00] Marcos, [09:02] Marcos, [09:04] Bruno, [09:06] Diego, [09:07] Larissa, [09:07] Diego, [09:08] Diego, [09:08] Larissa, [09:34] Bruno, [09:40] Bruno, [09:41] Diego, [09:41] Bruno, [09:52] Larissa, [09:52] Diego

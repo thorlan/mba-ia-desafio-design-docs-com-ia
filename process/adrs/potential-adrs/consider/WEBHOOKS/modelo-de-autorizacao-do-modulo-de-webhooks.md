@@ -67,8 +67,8 @@ O código mostra duas consequências que a reunião não discutiu:
 - O registro público com `role: ADMIN` é um risco que já existe no sistema. Ele fica registrado como risco do replay ou é tratado antes do deploy?
 
 ## Potential ADRs relacionados
-- [Retry com backoff exponencial e DLQ](../../must-document/WEBHOOKS/retry-com-backoff-exponencial-e-dlq.md): o replay protegido.
-- [Reuso dos padrões do projeto](../../must-document/WEBHOOKS/reuso-dos-padroes-do-projeto.md): o `requireRole` reaproveitado.
+- [Retry com backoff exponencial e DLQ](../../done/WEBHOOKS/retry-com-backoff-exponencial-e-dlq.md): o replay protegido.
+- [Reuso dos padrões do projeto](../../done/WEBHOOKS/reuso-dos-padroes-do-projeto.md): o `requireRole` reaproveitado.
 
 ## Notas adicionais
 Mudar o registro de usuários ou o modelo `User`/`Customer` está fora do escopo do desafio, que proíbe alterar o código. Aqui os dois pontos são só documentados como riscos.

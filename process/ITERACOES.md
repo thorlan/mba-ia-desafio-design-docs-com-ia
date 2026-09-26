@@ -21,7 +21,7 @@ Cada entrada registra o que a IA produziu, o que a revisão encontrou e o que mu
   - Usavam travessões, proibidos pelos prompts do curso.
   - A etapa de Potential ADR foi pulada. A decisão foi formalizada sem antes levantar e pontuar evidências, que é justamente o que o curso aponta como causa de "texto plausível, mas não necessariamente verdadeiro".
   - Uma decisão secundária (snapshot e filtro na inserção da outbox) virou ADR própria.
-- **Ação:** os 7 arquivos foram apagados e o trabalho recomeçou seguindo as 3 fases do plugin `adrs-management` (map, identify, generate), com os prompts adaptados em `prompts/`.
+- **Ação:** os 7 arquivos foram apagados e o trabalho recomeçou seguindo as fases do plugin `adrs-management` (map, identify, generate; a fase de link veio na Iteração 3), com os prompts adaptados em `prompts/`.
 
 ## Iteração 1: Potential ADRs e revisão humana
 
@@ -45,3 +45,29 @@ Cada entrada registra o que a IA produziu, o que a revisão encontrou e o que mu
   - Uma frase entre aspas era paráfrase, não citação literal. Foi trocada pela fala exata de [09:40] Bruno.
   - A atribuição de "evento de mudança desfeita também não sai" foi corrigida de [09:41] para [09:06] Diego.
   - A referência genérica `prisma/schema.prisma:1` foi trocada por uma linha significativa.
+
+## Iteração 3: revisão das ADRs por outro modelo
+
+- **Pedido:** revisar as ADRs com outro modelo (Fable 5.1, diferente do que as escreveu) e conferir se seguem o template do `adr-generator`.
+- **Resultado:** nenhum achado bloqueia o enunciado. Timestamps, citações, linhas de código e links conferem. Foram apontados 7 problemas de conteúdo, todos confirmados no código e na transcrição antes de corrigir:
+  - **I1, ADR-006:** afirmava que as classes de domínio estendem `AppError` diretamente. No código elas derivam de `ConflictError` e `UnprocessableEntityError` (`http-errors.ts:45` e `:55`).
+  - **I2, ADR-003:** dizia que a outbox guarda só eventos em andamento, o que contradiz a ADR-001 e [09:08] Diego, segundo quem ela também guarda os entregues.
+  - **I3, ADR-003:** "confirmada com o time" atribuía ao time da reunião uma decisão do autor (as 6 chamadas). O rótulo "Decisões do time" no índice e "Respostas do time" no prompt 03 induziam o erro e foram trocados.
+  - **I4, ADR-004:** atribuía a [09:46] Sofia a proteção da secret em repouso, tema que ela não citou. Virou lacuna e questão para o RFC.
+  - **I5, ADR-002:** apresentava como trade-off aceito uma inferência da IA sobre ordem em retentativa. O trade-off agora usa só o que [09:13] Larissa aceitou.
+  - **I6, ADR-006:** a terceira alternativa (injetar repositório) respondia a outra pergunta. Foi removida, e a escolha continua registrada na Decisão.
+  - **I7, ADR-006:** o conflito entre a validação no schema Zod e `WEBHOOK_INVALID_URL`, registrado na Etapa 1, não estava na lista de questões para o RFC.
+- **Efeito:** a lista de questões levadas ao RFC passou de 11 para 13.
+- **Ajustes menores, também apontados na revisão:**
+  - Decisão com no máximo 2 parágrafos e sempre com o "porque", como pede o template (ADR-001 a ADR-006).
+  - Detalhes de implementação removidos: função que recebe a transação (ADR-001), entry point e conexão de ORM (ADR-002), campos da DLQ (ADR-003) e campos da configuração (ADR-004).
+  - Prescrições trocadas por constatações neutras: mascaramento de secrets (ADR-004) e erros do worker (ADR-006).
+  - Afirmações sem fonte removidas ou citadas: um driver inteiro da ADR-006, a não atomicidade do broker (ADR-001, agora com [09:41] Diego), a disputa de recursos (ADR-002) e a correlação de logs pelo identificador (ADR-005).
+  - ADR-003: a terceira alternativa misturava dois eixos. Ficou só "teto de 3 tentativas", proposta de [09:16] Bruno, e a escolha de DLQ em tabela própria em vez de marcar falha na outbox passou para a Decisão.
+  - ADR-006: o módulo de autenticação não tem repository, o que agora está dito.
+  - Linha "Transcrição" das Referências alinhada ao corpo em todas as ADRs, e `docker-compose.yml` com número de linha.
+- **Fluxo do plugin completado:**
+  - A Fase 4 (`adr-link`) não tinha sido feita. Foi executada com o prompt `prompts/04-adr-link-adaptado.md`: os cabeçalhos passaram a ter relações tipadas ("Depende de", "Usada por", "Relacionada a"), e o relatório e a validação estão em `adrs/reports/`.
+  - Os 6 dossiês formalizados foram arquivados em `adrs/potential-adrs/done/WEBHOOKS/`, com os links do índice e do dossiê *consider* ajustados.
+- **Desvios do template declarados** no prompt 03: tamanho abaixo de 100 linhas, linha da transcrição fora do limite de 5 referências, códigos de erro na ADR de reuso e ausência dos níveis `generated/` e `needs-input/`.
+- **Estrutura:** o índice `docs/adrs/README.md` foi para `process/adrs/README.md`, porque o critério do enunciado pede que `docs/adrs/` contenha só arquivos no formato `ADR-NNN-*.md`.
