@@ -90,6 +90,21 @@ Cada entrada registra o que a IA produziu, o que a revisão encontrou e o que mu
 - **Erro encontrado numa ADR já mergeada:** ao ler as classes de erro para a matriz, a IA viu que a correção I1 da ADR-006 (Iteração 3) dizia que só as classes de conflito e de entidade não processável aceitam código próprio. A de requisição inválida também aceita (`src/shared/errors/http-errors.ts:4`). A ADR-006 foi corrigida neste PR. Esse detalhe importa, porque é por essa classe que `WEBHOOK_INVALID_URL` sai com status 400.
 - **Correções na verificação automática:** três referências de linha estavam erradas (paginação em `response.ts`, versão do Prisma e faixa de dependências no `package.json`). A causa foi ler arquivos concatenados, com a numeração contínua entre eles.
 
+## Iteração 6: PRD
+
+- **Prompt:** `prompts/07-prd-entrevista-adaptado.md`, adaptado do prompt de entrevista de PRD do curso e aprovado pelo usuário no PR antes da geração.
+- **Entrevista:** as fontes (RFC, FDD, ADRs, transcrição e código) responderam todas as etapas. O responsável já estava decidido (Diego, pelo revezamento da Iteração 5), então nenhuma pergunta foi levada ao usuário.
+- **Probabilidade dos riscos:** o enunciado exige probabilidade no PRD, e a reunião não estimou nenhuma. Cada uma veio com a evidência que a sustenta, por exemplo "Nenhum evento nosso vai chegar perto disso" ([09:24] Diego) para o limite de payload, ou ficou marcada como hipótese.
+- **Defaults do curso:** usados só onde a reunião não deu número (p95 de 150 ms nas rotas de cadastro e 99,9% de disponibilidade), marcados como hipótese.
+- **Títulos:** o PRD segue os títulos exatos do esqueleto do curso (com `###`), porque o prompt original pede isso explicitamente, diferente do RFC e do FDD.
+- **Revisão humana: "se não existe na reunião, remove".** O usuário leu a primeira versão do PRD e definiu uma regra que vale daqui em diante: nada de hipóteses. Foram removidos:
+  - os defaults do curso (p95 de 150 ms e 99,9% de disponibilidade) e a meta de 3 clientes integrados;
+  - um risco que não vinha da reunião (worker parado) e as contingências e mitigações inventadas;
+  - erros e fluxos alternativos deduzidos, como "customer inexistente" e "lista vazia";
+  - requisitos vindos do FDD e não da reunião (mascaramento da secret, métricas, DLQ para payload grande);
+  - os testes unitários e de worker e a homologação com cliente.
+  Fatos do código continuaram, porque são verificáveis. Campos obrigatórios do template sem resposta na reunião passaram a dizer "Não definido na reunião". A probabilidade do risco de prazo mudou de "média (hipótese)" para "baixa", com a evidência "Atlas vai gostar" ([09:47] Marcos). O prompt 07 foi atualizado com a regra, e a seção "Defaults Inteligentes" saiu dele.
+
 ## Iteração 7: "se não existe na reunião, remove" aplicado a todo o pacote
 
 - **Regra do usuário:** o que não existe na reunião sai do documento, sem hipóteses nem inferências, e sem deixar de cumprir o enunciado. Fatos do código continuam valendo. Campo obrigatório sem resposta na reunião diz "Não definido na reunião".
