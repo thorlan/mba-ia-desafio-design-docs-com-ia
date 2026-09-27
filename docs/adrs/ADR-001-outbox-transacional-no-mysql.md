@@ -53,7 +53,6 @@ O evento é gravado pela própria transação de mudança de status ([09:41] Bru
 ### Fila externa (Redis Streams ou similar)
 - Contra: exige subir e operar infraestrutura nova ([09:07] Larissa).
 - Contra: *overengineering* para um time pequeno ([09:07] Diego).
-- Contra: publicar fora da transação "perde a garantia toda" ([09:41] Diego).
 
 ## Consequências
 
@@ -70,4 +69,4 @@ O evento é gravado pela própria transação de mudança de status ([09:41] Bru
 - `src/modules/orders/order.status.ts:3` (máquina de estados que define as transições que geram evento)
 - `prisma/schema.prisma:74` (modelo de pedido, fonte dos dados do evento)
 - `docker-compose.yml:3` (MySQL 8.0 como única infraestrutura existente)
-- Transcrição: [09:00] Marcos, [09:02] Marcos, [09:03] Larissa, [09:04] Bruno, [09:06] Diego, [09:07] Diego, [09:07] Larissa, [09:07] Bruno, [09:08] Larissa, [09:08] Diego, [09:10] Larissa, [09:34] Bruno, [09:40] Bruno, [09:41] Bruno, [09:41] Diego, [09:52] Larissa, [09:52] Diego
+- Transcrição: [09:00] Marcos, [09:02] Marcos, [09:03] Larissa, [09:04] Bruno, [09:06] Diego, [09:07] Diego, [09:07] Larissa, [09:07] Bruno, [09:08] Larissa, [09:08] Diego, [09:10] Larissa, [09:34] Bruno, [09:40] Bruno, [09:41] Bruno, [09:52] Larissa, [09:52] Diego

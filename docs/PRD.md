@@ -17,24 +17,24 @@ Clientes B2B do OMS querem ser avisados quando o status dos seus pedidos muda, s
 ### Contexto e problema
 
 Público-alvo
-- Clientes B2B que integram com o OMS pela API; os primeiros são Atlas Comercial, MaxDistribuição e Nova Cargo ([09:00] Marcos).
-- Desenvolvedores desses clientes, que integram com a documentação do portal ([09:26] Marcos, [09:40] Marcos).
-- Administradores da plataforma, os únicos que reprocessam eventos da DLQ ([09:36] Sofia).
+- PRD-PUB-01 Clientes B2B que integram com o OMS pela API; os primeiros são Atlas Comercial, MaxDistribuição e Nova Cargo ([09:00] Marcos).
+- PRD-PUB-02 Desenvolvedores desses clientes, que integram com a documentação do portal ([09:26] Marcos, [09:40] Marcos).
+- PRD-PUB-03 Administradores da plataforma, os únicos que reprocessam eventos da DLQ ([09:36] Sofia).
 
 Cenários de uso chave
-- Um pedido muda de status e o cliente é notificado, sem precisar ficar consultando a API ([09:00] Marcos, [09:02] Marcos).
-- O cliente cadastra um webhook que só quer saber quando o pedido vira SHIPPED ou DELIVERED ([09:33] Marcos).
-- O sistema do cliente fica duas horas fora do ar numa manutenção planejada, e as retentativas cobrem essa janela ([09:16] Diego).
-- Uma secret vaza num log do cliente, como já aconteceu, e ele pede uma nova pela API ([09:22] Diego, [09:21] Sofia).
-- O cliente consulta as últimas entregas, com sucesso ou falha ([09:34] Marcos).
-- Um administrador reprocessa um evento da DLQ ([09:18] Diego).
+- PRD-CEN-01 Um pedido muda de status e o cliente é notificado, sem precisar ficar consultando a API ([09:00] Marcos, [09:02] Marcos).
+- PRD-CEN-02 O cliente cadastra um webhook que só quer saber quando o pedido vira SHIPPED ou DELIVERED ([09:33] Marcos).
+- PRD-CEN-03 O sistema do cliente fica duas horas fora do ar numa manutenção planejada, e as retentativas cobrem essa janela ([09:16] Diego).
+- PRD-CEN-04 Uma secret vaza num log do cliente, como já aconteceu, e ele pede uma nova pela API ([09:22] Diego, [09:21] Sofia).
+- PRD-CEN-05 O cliente consulta as últimas entregas, com sucesso ou falha ([09:34] Marcos).
+- PRD-CEN-06 Um administrador reprocessa um evento da DLQ ([09:18] Diego).
 
 Onde essa feature será implantada
-- No OMS existente: uma API REST em Node.js e TypeScript, com um único processo HTTP e banco MySQL via Prisma (`src/server.ts:6`, `prisma/schema.prisma:5-9`). A feature entra como um módulo novo e um processo separado para o worker ([09:27] Bruno, [09:11] Diego).
+- PRD-IMPL-01 No OMS existente: uma API REST em Node.js e TypeScript, com um único processo HTTP e banco MySQL via Prisma (`src/server.ts:6`, `prisma/schema.prisma:5-9`). A feature entra como um módulo novo e um processo separado para o worker ([09:27] Bruno, [09:11] Diego).
 
 Problemas priorizados
-- **Integração lenta e cara:** os clientes consultam a API de pedidos de tempos em tempos, o que deixa a integração "lenta e cara pra eles" ([09:00] Marcos). Prioridade alta.
-- **Risco de perder cliente:** a Atlas sinalizou que pode migrar para um concorrente se não tiver a funcionalidade até o fim do trimestre ([09:00] Marcos), e quer a entrega para o fim de novembro ([09:45] Marcos). Prioridade alta.
+- PRD-PROB-01 **Integração lenta e cara:** os clientes consultam a API de pedidos de tempos em tempos, o que deixa a integração "lenta e cara pra eles" ([09:00] Marcos).
+- PRD-PROB-02 **Risco de perder cliente:** a Atlas sinalizou que pode migrar para um concorrente se não tiver a funcionalidade até o fim do trimestre ([09:00] Marcos), e quer a entrega para o fim de novembro ([09:45] Marcos).
 
 ---
 
@@ -43,7 +43,7 @@ Problemas priorizados
 | Objetivo | Métrica | Meta |
 | --- | --- | --- |
 | PRD-OBJ-01: notificar o cliente em "tempo real" ([09:02] Marcos) | Tempo entre a mudança de status e a entrega | Menos de 10 s ([09:02] Marcos); no pior caso, 2 s até o worker ler o evento ([09:10] Larissa) |
-| PRD-OBJ-02: nunca perder uma mudança de status ([09:40] Bruno) | Mudanças de status confirmadas sem evento registrado | Zero: "Não pode ter caso de status mudar e evento não sair" ([09:40] Bruno) |
+| PRD-OBJ-02: nunca perder uma mudança de status ([09:40] Bruno) | Mudanças para um status assinado, confirmadas, sem evento registrado | Zero: "Não pode ter caso de status mudar e evento não sair" ([09:40] Bruno) |
 | PRD-OBJ-03: absorver indisponibilidades do cliente ([09:16] Diego) | Janela entre a primeira falha e a última tentativa | Quase 15 h ([09:17] Diego) |
 | PRD-OBJ-04: entregar no prazo pedido pela Atlas ([09:45] Marcos) | Sprints até a entrega, com a revisão de segurança incluída | 3 sprints ([09:47] Larissa) |
 
@@ -90,7 +90,7 @@ A cada mudança de status de um pedido, o sistema notifica os webhooks do custom
 **Erros previstos**
 - Falha de gravação do evento, que desfaz a mudança de status ([09:40] Bruno).
 
-**Prioridade:** alta
+**Prioridade:** Não definida na reunião
 
 ---
 
@@ -108,7 +108,7 @@ O cliente cadastra um webhook informando a URL e os status que quer receber; a p
 **Erros previstos**
 - URL `http`: recusada com erro de validação ([09:23] Sofia).
 
-**Prioridade:** alta
+**Prioridade:** Não definida na reunião
 
 ---
 
@@ -125,7 +125,7 @@ Cada webhook define a lista de status que quer receber, e só esses geram notifi
 **Erros previstos**
 - Não definido na reunião.
 
-**Prioridade:** alta
+**Prioridade:** Não definida na reunião
 
 ---
 
@@ -141,12 +141,12 @@ O cliente lista os webhooks de um customer ([09:33] Bruno).
 **Erros previstos**
 - Não definido na reunião.
 
-**Prioridade:** media
+**Prioridade:** Não definida na reunião
 
 ---
 
 #### PRD-FR-05 Editar webhook
-O cliente edita um webhook ([09:33] Bruno), incluindo os eventos que quer receber ([09:33] Bruno) e o estado ativo ([09:21] Bruno).
+O cliente edita um webhook com PATCH ([09:33] Bruno). Quais campos podem ser editados: não definido na reunião.
 
 **Fluxo principal**
 - O usuário envia a alteração de um webhook ([09:33] Bruno).
@@ -158,7 +158,7 @@ O cliente edita um webhook ([09:33] Bruno), incluindo os eventos que quer recebe
 - Webhook inexistente: `WEBHOOK_NOT_FOUND` ([09:28] Bruno).
 - URL `http`: recusada com erro de validação ([09:23] Sofia).
 
-**Prioridade:** media
+**Prioridade:** Não definida na reunião
 
 ---
 
@@ -174,7 +174,7 @@ O cliente remove um webhook ([09:33] Bruno).
 **Erros previstos**
 - Webhook inexistente: `WEBHOOK_NOT_FOUND` ([09:28] Bruno).
 
-**Prioridade:** media
+**Prioridade:** Não definida na reunião
 
 ---
 
@@ -192,7 +192,7 @@ O cliente pede uma nova secret pela API; a antiga fica válida por 24 h em paral
 **Erros previstos**
 - Webhook inexistente: `WEBHOOK_NOT_FOUND` ([09:28] Bruno).
 
-**Prioridade:** alta
+**Prioridade:** Não definida na reunião
 
 ---
 
@@ -210,7 +210,7 @@ Todo envio carrega uma assinatura HMAC-SHA256 do corpo, com a secret do endpoint
 **Erros previstos**
 - Não definido na reunião.
 
-**Prioridade:** alta
+**Prioridade:** Não definida na reunião
 
 ---
 
@@ -228,7 +228,7 @@ Todo evento tem um UUID gerado quando entra na outbox, enviado no header `X-Even
 **Erros previstos**
 - Não definido na reunião.
 
-**Prioridade:** alta
+**Prioridade:** Não definida na reunião
 
 ---
 
@@ -245,7 +245,7 @@ Uma entrega com falha é retentada 5 vezes, com backoff de 1 min, 5 min, 30 min,
 **Erros previstos**
 - Cliente que não responde em 10 s ([09:42] Diego).
 
-**Prioridade:** alta
+**Prioridade:** Não definida na reunião
 
 ---
 
@@ -262,7 +262,7 @@ Um evento que esgotou as tentativas vai para uma DLQ em tabela separada, com o p
 **Erros previstos**
 - Não definido na reunião.
 
-**Prioridade:** alta
+**Prioridade:** Não definida na reunião
 
 ---
 
@@ -280,16 +280,16 @@ Um administrador reprocessa manualmente um evento da DLQ, e a operação registr
 **Erros previstos**
 - Usuário sem o papel de administrador: acesso negado ([09:36] Sofia).
 
-**Prioridade:** alta
+**Prioridade:** Não definida na reunião
 
 ---
 
 #### PRD-FR-13 Consultar histórico de entregas
-O cliente vê as últimas 100 entregas de um webhook, com sucesso ou falha, payload, resposta e tempo de resposta ([09:34] Marcos).
+O cliente vê as últimas entregas de um webhook, com sucesso ou falha, payload, resposta e tempo de resposta ([09:34] Marcos); o número 100 foi dado como exemplo ("os últimos 100 webhooks que vocês mandaram pra mim", [09:34] Marcos).
 
 **Fluxo principal**
 - O usuário pede o histórico de um webhook ([09:34] Marcos).
-- O sistema devolve as últimas 100 entregas ([09:34] Marcos).
+- O sistema devolve as últimas entregas ([09:34] Marcos).
 
 **Fluxos alternativos e exceções**
 - Não definido na reunião.
@@ -297,7 +297,7 @@ O cliente vê as últimas 100 entregas de um webhook, com sucesso ou falha, payl
 **Erros previstos**
 - Webhook inexistente: `WEBHOOK_NOT_FOUND` ([09:28] Bruno).
 
-**Prioridade:** media
+**Prioridade:** Não definida na reunião
 
 ---
 
@@ -343,17 +343,17 @@ Acessibilidade no frontend consumidor
 ### Arquitetura e abordagem
 
 Abordagem
-- Padrão outbox no MySQL existente, com um worker separado que lê a tabela e faz as chamadas HTTP ([09:06] Diego, [09:07] Diego). Visão completa no [RFC](RFC.md).
+- PRD-ARQ-01 Padrão outbox no MySQL existente, com um worker separado que lê a tabela e faz as chamadas HTTP ([09:06] Diego, [09:07] Diego). Visão completa no [RFC](RFC.md).
 
 Componentes
-- Módulo de webhooks com a mesma estrutura dos módulos atuais ([09:27] Bruno).
-- Outbox, DLQ e configuração de webhooks no MySQL ([09:06] Diego, [09:18] Diego, [09:21] Bruno).
-- Worker em processo separado, com o mesmo banco e a mesma stack ([09:11] Diego).
+- PRD-COMP-01 Módulo de webhooks com a mesma estrutura dos módulos atuais ([09:27] Bruno).
+- PRD-COMP-02 Outbox, DLQ e configuração de webhooks no MySQL ([09:06] Diego, [09:18] Diego, [09:21] Bruno).
+- PRD-COMP-03 Worker em processo separado, com o mesmo banco e a mesma stack ([09:11] Diego).
 
 Integrações
-- Serviço de pedidos: a inserção na outbox acontece dentro da transação de mudança de status ([09:40] Bruno, `src/modules/orders/order.service.ts:126`).
-- Endpoints dos clientes, fora da infraestrutura da plataforma ([09:19] Sofia).
-- Portal do desenvolvedor, com a documentação de integração ([09:40] Marcos).
+- PRD-INTG-01 Serviço de pedidos: a inserção na outbox acontece dentro da transação de mudança de status ([09:40] Bruno, `src/modules/orders/order.service.ts:126`).
+- PRD-INTG-02 Endpoints dos clientes, fora da infraestrutura da plataforma ([09:19] Sofia).
+- PRD-INTG-03 Portal do desenvolvedor, com a documentação de integração ([09:40] Marcos).
 
 ### Decisões e trade-offs
 
@@ -398,17 +398,16 @@ O Marcos confirma o prazo com a Atlas ([09:47] Marcos) e atualiza os clientes ([
 O cliente precisa de endpoint `https` ([09:23] Sofia), verificar a assinatura do lado dele ([09:20] Sofia) e estar preparado para receber o mesmo evento duas vezes ([09:24] Diego).
 
 #### PRD-DEP-05 Técnica: processo do worker
-O worker é um processo separado, conectado ao mesmo banco ([09:11] Diego, [09:30] Bruno), e carrega a mesma validação de ambiente da API (`src/config/env.ts:3-10`).
+O worker é um processo separado, conectado ao mesmo banco, com a mesma `DATABASE_URL` ([09:11] Diego, [09:30] Bruno).
 
 ---
 
 ### Riscos e mitigação
 
 #### PRD-RISCO-01: A entrega atrasa e a Atlas migra para um concorrente
-- **Probabilidade:** baixa (evidência: depois da estimativa de três sprints, "Atlas vai gostar", [09:47] Marcos)
+- **Probabilidade:** Não definida na reunião.
 - **Impacto:** perda de um cliente B2B, que ameaçou migrar ([09:00] Marcos).
 - **Mitigação:**
-  - Escopo enxuto: e-mail, painel e rate limiting fora desta fase ([09:48] Larissa).
   - Confirmação do prazo com a Atlas ([09:47] Marcos).
 - **Plano de contingência:** Não definido na reunião.
 
@@ -442,7 +441,7 @@ O worker é um processo separado, conectado ao mesmo banco ([09:11] Diego, [09:3
 - **Plano de contingência:** Não definido na reunião.
 
 #### PRD-RISCO-06: Um cliente recebe uma rajada de chamadas
-- **Probabilidade:** baixa (evidência: "A gente observa e implementa se virar problema", [09:39] Diego)
+- **Probabilidade:** Não definida na reunião.
 - **Impacto:** 50 pedidos mudando de status em um minuto viram 50 chamadas ao cliente ([09:38] Diego).
 - **Mitigação:**
   - Observar e decidir depois ([09:39] Larissa).
@@ -461,14 +460,14 @@ O worker é um processo separado, conectado ao mesmo banco ([09:11] Diego, [09:3
 Checklist objetivo que define se a feature está pronta. Os critérios técnicos estão na seção 9 do [FDD](FDD.md).
 
 - PRD-CA-01: toda mudança de status para um status assinado gera um evento na mesma transação, e uma mudança desfeita não gera evento ([09:06] Diego, [09:40] Bruno).
-- PRD-CA-02: a entrega acontece em menos de 10 s após a mudança de status ([09:02] Marcos).
+- PRD-CA-02: a primeira tentativa de entrega acontece em menos de 10 s após a mudança de status ([09:02] Marcos).
 - PRD-CA-03: mudança para um status que nenhum webhook do customer assina não gera evento ([09:34] Bruno).
 - PRD-CA-04: o cliente cadastra, lista, edita e remove webhooks pela API ([09:33] Bruno), e URL `http` é recusada ([09:23] Sofia).
 - PRD-CA-05: todo envio traz os headers `X-Event-Id`, `X-Signature`, `X-Timestamp`, `X-Webhook-Id` e `Content-Type` ([09:44] Diego, [09:44] Sofia).
 - PRD-CA-06: depois de uma rotação, a secret antiga vale por 24 h e depois deixa de valer ([09:21] Sofia).
 - PRD-CA-07: uma entrega que sempre falha é retentada 5 vezes, em 1 min, 5 min, 30 min, 2 h e 12 h, e termina na DLQ ([09:17] Larissa).
 - PRD-CA-08: só o papel de administrador consegue fazer replay, e cada replay registra quem fez ([09:36] Sofia).
-- PRD-CA-09: o histórico mostra as últimas 100 entregas de um webhook ([09:34] Marcos).
+- PRD-CA-09: o histórico mostra as últimas entregas de um webhook, com sucesso ou falha ([09:34] Marcos).
 - PRD-CA-10: a revisão de segurança da Sofia foi feita antes do deploy ([09:49] Sofia).
 - PRD-CA-11: a documentação de integração está publicada no portal ([09:40] Marcos).
 
@@ -477,9 +476,9 @@ Checklist objetivo que define se a feature está pronta. Os critérios técnicos
 ### Testes e validação
 
 Tipos de teste obrigatórios
-- Testes ponta a ponta, incluídos na estimativa junto com a integração no serviço de pedidos ([09:46] Larissa), no padrão de testes do projeto, com Vitest e Supertest contra a API (`tests/orders.test.ts`, `package.json:17`).
-- Revisão de segurança do código antes do deploy, com foco em HMAC e geração de secret ([09:46] Sofia).
+- PRD-TEST-01 Testes ponta a ponta, incluídos na estimativa junto com a integração no serviço de pedidos ([09:46] Larissa), no padrão de testes do projeto, com Vitest e Supertest contra a API (`tests/orders.test.ts`, `package.json:17`).
+- PRD-TEST-02 Revisão de segurança do código antes do deploy, com foco em HMAC e geração de secret ([09:46] Sofia).
 
 Estratégia de validação
-- A revisão de segurança entra no fim das três sprints ([09:47] Larissa).
+- PRD-VAL-01 A revisão de segurança entra no fim das três sprints ([09:47] Larissa).
 - Demais etapas de validação: não definidas na reunião.

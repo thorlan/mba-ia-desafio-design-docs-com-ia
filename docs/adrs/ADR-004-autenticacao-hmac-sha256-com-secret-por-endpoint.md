@@ -54,5 +54,5 @@ A assinatura vai no header `X-Signature` ([09:20] Sofia). A secret é gerada pel
 
 - `src/modules/users/user.service.ts:26` (senhas guardadas como hash; padrão que não se aplica à secret)
 - `src/shared/logger/index.ts:4` (lista de campos mascarados, que ainda não inclui secret)
-- `src/middlewares/validate.middleware.ts:11` (validação de entrada onde fica a exigência de TLS)
+- `src/middlewares/validate.middleware.ts:11` (middleware que aplica os schemas Zod, onde a reunião situou a regra de https)
 - Transcrição: [09:02] Marcos, [09:03] Sofia, [09:19] Sofia, [09:20] Sofia, [09:21] Sofia, [09:21] Bruno, [09:22] Diego, [09:22] Sofia, [09:23] Sofia, [09:31] Marcos, [09:44] Diego, [09:46] Sofia

@@ -11,7 +11,7 @@
 
 ## Contexto e Problema
 
-O endpoint do cliente pode estar lento ou fora do ar ([09:14] Larissa). Já houve cliente com duas horas de indisponibilidade numa manutenção planejada ([09:16] Diego).
+O cliente pode estar offline ([09:14] Larissa). Já houve cliente com duas horas de indisponibilidade numa manutenção planejada ([09:16] Diego).
 
 Desistir cedo demais não cobre indisponibilidades como essa ([09:16] Diego). Insistir para sempre deixa o evento pendurado se o cliente sumiu ([09:15] Diego).
 

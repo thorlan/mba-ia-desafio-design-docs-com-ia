@@ -140,3 +140,24 @@ Cada entrada registra o que a IA produziu, o que a revisão encontrou e o que mu
 - **Decisões do usuário:** o README foi escrito direto, sem PR de prompt, porque o requisito 6 do enunciado já define as 6 seções obrigatórias. A única ferramenta de IA usada foi o Claude Code (Opus 5.5 escrevendo e um subagente Fable 5.1 revisando).
 - **Como foi montado:** os três prompts mostrados no README foram copiados por script dos arquivos em `prompts/`, para ficarem idênticos ao que foi usado. As iterações vêm deste registro.
 - **Verificação:** todas as seções obrigatórias presentes, 3 prompts em blocos de código, links funcionando, sem travessões. O diff contra a base confirma que nenhum arquivo de `src/`, `prisma/`, `tests/` ou de configuração foi alterado.
+
+## Iteração 9: revisão final por quatro modelos
+
+- **Pedido:** revisar o pacote entregue contra o enunciado com todos os modelos disponíveis, sem alterar nada: Fable, Sonnet, Haiku e uma instância nova do Opus, em paralelo e só leitura.
+- **Resultado:** nenhum critério do enunciado falhou. A qualidade das revisões variou:
+  - Fable e Opus acharam problemas reais e quase iguais.
+  - O Sonnet não achou nada importante.
+  - O Haiku trouxe um achado falso: disse que Larissa não cita Redis, mas ela cita em [09:07].
+  - Cada achado foi conferido no arquivo antes de corrigir.
+- **Corrigido (confirmado):**
+  - A listagem de webhooks punha o customer na query string, e a reunião disse "no body ou no path" ([09:32] Larissa). A rota exata ficou como não definida.
+  - O diagrama de estados do FDD mantinha o evento esgotado como "falhou" na outbox, contra a ADR-003. Ele agora mostra só as passagens ditas na reunião.
+  - "Método: POST" no envio ao cliente, os campos editáveis do PATCH e o corpo da resposta do replay passaram a "não definido na reunião". O exemplo do replay devolvia o mesmo `event_id`, o que decidia sem querer a questão RFC-QB-08.
+  - As 13 prioridades dos requisitos do PRD, as prioridades dos problemas e a mitigação "escopo enxuto" do risco de prazo saíram, porque a reunião não definiu nenhuma delas. Duas probabilidades sem sustentação passaram a "Não definida na reunião".
+  - Critérios compatíveis com o desenho: "primeira tentativa em menos de 10 s" e ordem por `created_at` com a ressalva da retentativa.
+  - Citação fora de contexto na ADR-001, que usava [09:41] Diego contra o Redis, e atribuições imprecisas nas ADRs 002, 003, 004 e 005.
+  - "5 retentativas" padronizado, e o número 100 do histórico marcado como exemplo dado na reunião.
+- **Critérios no limite:**
+  - O RFC foi enxugado de 2.180 para 1.842 palavras, para caber em 4 páginas. A tabela 5.2 ganhou a coluna "Tema na reunião", que bate com o Tracker.
+  - O Tracker foi ampliado com IDs para escopo, fluxos, resiliência, invariantes, observabilidade e dependências do FDD, e para público, cenários, arquitetura e testes do PRD. Passou de 184 para 272 linhas, com 94% de `TRANSCRICAO` e 17 linhas `CODIGO`.
+- **Mantido:** a observabilidade do FDD continua dizendo que a reunião não definiu métricas nem tracing, pela regra de não inventar, mesmo que um avaliador rigoroso possa achar pouco.
