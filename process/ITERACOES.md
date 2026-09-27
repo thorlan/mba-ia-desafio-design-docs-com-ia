@@ -134,3 +134,9 @@ Cada entrada registra o que a IA produziu, o que a revisão encontrou e o que mu
   - dois riscos do PRD apontando para a evidência da probabilidade, e não para a fala que levanta o risco.
 - **Invenções que tinham escapado da Iteração 7:** ao colocar IDs no RFC, a IA encontrou três trechos sem fonte na tabela de alternativas: "Seria reativa" (Redis), "Uma secret só seria mais simples de gerenciar" e "Eliminaria repetições". Foram trocados pelas falas literais. O script de auditoria da Iteração 7 não os pegou porque as linhas já tinham outras citações.
 - **Resultado:** 184 linhas, 184 de 184 itens identificados (100%), 172 com `TRANSCRICAO` (93%) e 12 com `CODIGO`.
+
+## Etapa final: README do processo
+
+- **Decisões do usuário:** o README foi escrito direto, sem PR de prompt, porque o requisito 6 do enunciado já define as 6 seções obrigatórias. A única ferramenta de IA usada foi o Claude Code (Opus 5.5 escrevendo e um subagente Fable 5.1 revisando).
+- **Como foi montado:** os três prompts mostrados no README foram copiados por script dos arquivos em `prompts/`, para ficarem idênticos ao que foi usado. As iterações vêm deste registro.
+- **Verificação:** todas as seções obrigatórias presentes, 3 prompts em blocos de código, links funcionando, sem travessões. O diff contra a base confirma que nenhum arquivo de `src/`, `prisma/`, `tests/` ou de configuração foi alterado.
