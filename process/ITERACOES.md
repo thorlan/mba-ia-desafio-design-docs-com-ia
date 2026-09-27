@@ -120,3 +120,17 @@ Cada entrada registra o que a IA produziu, o que a revisão encontrou e o que mu
   - O que tinha origem ganhou citação. Os trade-offs explícitos, que o enunciado exige, foram reescritos só com falas citadas.
 - **RFC:** saiu o risco "worker de instância única para ou fica lento", que vinha da análise e não da reunião.
 - **Mantido:** as lacunas ("a reunião não definiu X") continuam nas ADRs e no RFC 5.2, porque são afirmações verdadeiras sobre a reunião, equivalentes ao "Não definido na reunião".
+
+## Iteração 8: Tracker
+
+- **Prompt:** `prompts/08-tracker-adaptado.md`, aprovado pelo usuário no PR antes da geração. O curso não tem template de Tracker; o prompt segue o formato do requisito 5 do enunciado.
+- **IDs nos documentos:** com a aprovação do usuário, os itens sem ID receberam um no próprio documento, para cada linha do Tracker ser encontrável. No RFC: componentes, alternativas, questões em aberto e riscos. No PRD: escopo, fora de escopo, dependências e decisões. No FDD: restrições, objetivos, parâmetros e integração.
+- **Geração por script:** para cada ID, a fonte é a citação que o próprio documento traz no item (a linha "Fonte:", a coluna "Fonte" ou a primeira citação). O script valida que todo timestamp existe, que todo caminho de código existe, que todo ID está no documento indicado e que não há ID duplicado.
+- **Revisão das fontes:** a primeira versão tinha 5 problemas de extração, corrigidos antes do commit:
+  - o resumo dos objetivos do PRD vinha da coluna de métrica;
+  - resumos de "Fora de escopo" cortados no meio de uma citação;
+  - um ")" sobrando nas decisões do PRD;
+  - riscos do RFC com a fonte da mitigação, e não da coluna "Fonte";
+  - dois riscos do PRD apontando para a evidência da probabilidade, e não para a fala que levanta o risco.
+- **Invenções que tinham escapado da Iteração 7:** ao colocar IDs no RFC, a IA encontrou três trechos sem fonte na tabela de alternativas: "Seria reativa" (Redis), "Uma secret só seria mais simples de gerenciar" e "Eliminaria repetições". Foram trocados pelas falas literais. O script de auditoria da Iteração 7 não os pegou porque as linhas já tinham outras citações.
+- **Resultado:** 184 linhas, 184 de 184 itens identificados (100%), 172 com `TRANSCRICAO` (93%) e 12 com `CODIGO`.

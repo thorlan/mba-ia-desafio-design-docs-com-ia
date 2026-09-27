@@ -52,24 +52,24 @@ Problemas priorizados
 ### Escopo
 
 Incluso
-- Notificação a cada mudança de status de pedido, para os webhooks que assinam o novo status ([09:33] Marcos, [09:40] Bruno).
-- Cadastro, listagem, edição e remoção de webhooks por customer ([09:31] Marcos, [09:33] Bruno).
-- Rotação de secret com carência de 24 h ([09:21] Sofia).
-- Assinatura HMAC-SHA256 e identificador único em cada envio ([09:22] Sofia, [09:25] Diego).
-- Retentativas com backoff exponencial e DLQ ([09:17] Larissa).
-- Histórico de entregas por webhook ([09:34] Marcos).
-- Reprocessamento manual da DLQ por administradores, com registro de quem fez ([09:36] Sofia).
-- Documentação para os clientes no portal do desenvolvedor ([09:40] Marcos).
+- PRD-ESC-01: Notificação a cada mudança de status de pedido, para os webhooks que assinam o novo status ([09:33] Marcos, [09:40] Bruno).
+- PRD-ESC-02: Cadastro, listagem, edição e remoção de webhooks por customer ([09:31] Marcos, [09:33] Bruno).
+- PRD-ESC-03: Rotação de secret com carência de 24 h ([09:21] Sofia).
+- PRD-ESC-04: Assinatura HMAC-SHA256 e identificador único em cada envio ([09:22] Sofia, [09:25] Diego).
+- PRD-ESC-05: Retentativas com backoff exponencial e DLQ ([09:17] Larissa).
+- PRD-ESC-06: Histórico de entregas por webhook ([09:34] Marcos).
+- PRD-ESC-07: Reprocessamento manual da DLQ por administradores, com registro de quem fez ([09:36] Sofia).
+- PRD-ESC-08: Documentação para os clientes no portal do desenvolvedor ([09:40] Marcos).
 
 Fora de escopo
-- **Webhooks de entrada:** os clientes "querem receber, não mandar" ([09:02] Marcos).
-- **E-mail ao cliente em falhas seguidas:** "Email tá fora de escopo dessa fase. Talvez próxima fase, depois que a gente medir o impacto." ([09:37] Larissa).
-- **Painel visual para o cliente:** "Não, agora não. Só endpoints. Painel é projeto separado do time de frontend." ([09:40] Larissa).
-- **Rate limiting de envio:** adiado; fica como "observar e decidir depois" ([09:39] Larissa).
-- **Vários workers em paralelo:** "isso é problema do futuro, não agora" ([09:13] Diego).
-- **Arquivamento de eventos entregues:** "fora do escopo dessa feature" ([09:08] Diego).
-- **Restrição de papel no cadastro de webhooks:** qualquer papel autenticado pode gerenciar webhooks "Por enquanto" ([09:37] Sofia).
-- **Truncar payloads grandes:** descartado; acima do limite, o evento não é enviado ([09:23] Sofia, [09:24] Larissa).
+- PRD-FORA-01: **Webhooks de entrada:** os clientes "querem receber, não mandar" ([09:02] Marcos).
+- PRD-FORA-02: **E-mail ao cliente em falhas seguidas:** "Email tá fora de escopo dessa fase. Talvez próxima fase, depois que a gente medir o impacto." ([09:37] Larissa).
+- PRD-FORA-03: **Painel visual para o cliente:** "Não, agora não. Só endpoints. Painel é projeto separado do time de frontend." ([09:40] Larissa).
+- PRD-FORA-04: **Rate limiting de envio:** adiado; fica como "observar e decidir depois" ([09:39] Larissa).
+- PRD-FORA-05: **Vários workers em paralelo:** "isso é problema do futuro, não agora" ([09:13] Diego).
+- PRD-FORA-06: **Arquivamento de eventos entregues:** "fora do escopo dessa feature" ([09:08] Diego).
+- PRD-FORA-07: **Restrição de papel no cadastro de webhooks:** qualquer papel autenticado pode gerenciar webhooks "Por enquanto" ([09:37] Sofia).
+- PRD-FORA-08: **Truncar payloads grandes:** descartado; acima do limite, o evento não é enviado ([09:23] Sofia, [09:24] Larissa).
 
 ---
 
@@ -357,27 +357,27 @@ Integrações
 
 ### Decisões e trade-offs
 
-#### Decisão: Outbox transacional no MySQL existente ([ADR-001](adrs/ADR-001-outbox-transacional-no-mysql.md))
+#### PRD-DEC-01 Decisão: Outbox transacional no MySQL existente ([ADR-001](adrs/ADR-001-outbox-transacional-no-mysql.md))
 - **Justificativa:** se a transação principal commitou, o evento foi registrado, e se deu rollback, o evento some junto ([09:06] Diego); sem subir infraestrutura nova ([09:07] Diego).
 - **Trade-off:** acrescenta trabalho a uma transação que já é pesada ([09:04] Bruno).
 
-#### Decisão: Worker em processo separado com polling ([ADR-002](adrs/ADR-002-worker-em-processo-separado-com-polling.md))
+#### PRD-DEC-02 Decisão: Worker em processo separado com polling ([ADR-002](adrs/ADR-002-worker-em-processo-separado-com-polling.md))
 - **Justificativa:** o MySQL não notifica processo externo ([09:09] Diego), e o worker não pode cair quando a API reinicia ([09:11] Diego).
 - **Trade-off:** latência de 2 s no pior caso ([09:10] Larissa) e ordem só por pedido enquanto houver um único worker ([09:13] Larissa).
 
-#### Decisão: Retry com backoff exponencial e DLQ ([ADR-003](adrs/ADR-003-retry-com-backoff-exponencial-e-dlq.md))
+#### PRD-DEC-03 Decisão: Retry com backoff exponencial e DLQ ([ADR-003](adrs/ADR-003-retry-com-backoff-exponencial-e-dlq.md))
 - **Justificativa:** 3 tentativas "é pouco" ([09:16] Diego), e retry indefinido deixa evento "pendurado pra sempre se o cliente sumiu" ([09:15] Diego).
 - **Trade-off:** acima de 15 h de indisponibilidade, o problema é do cliente ([09:17] Marcos), e o reprocessamento é manual ([09:18] Diego).
 
-#### Decisão: HMAC-SHA256 com secret por endpoint e rotação ([ADR-004](adrs/ADR-004-autenticacao-hmac-sha256-com-secret-por-endpoint.md))
+#### PRD-DEC-04 Decisão: HMAC-SHA256 com secret por endpoint e rotação ([ADR-004](adrs/ADR-004-autenticacao-hmac-sha256-com-secret-por-endpoint.md))
 - **Justificativa:** é o padrão de mercado ([09:20] Sofia), e secret por endpoint evita que "se vaza uma, vaza tudo" ([09:21] Sofia).
 - **Trade-off:** o cliente precisa migrar para a nova secret em até 24 h depois de uma rotação ([09:21] Sofia).
 
-#### Decisão: Entrega at-least-once com X-Event-Id ([ADR-005](adrs/ADR-005-entrega-at-least-once-com-x-event-id.md))
+#### PRD-DEC-05 Decisão: Entrega at-least-once com X-Event-Id ([ADR-005](adrs/ADR-005-entrega-at-least-once-com-x-event-id.md))
 - **Justificativa:** padrão de mercado, e exactly-once "exigiria coordenação dos dois lados e fica muito mais complexo" ([09:25] Diego).
 - **Trade-off:** "Isso joga responsabilidade pro cliente" ([09:25] Sofia).
 
-#### Decisão: Reuso dos padrões existentes do projeto ([ADR-006](adrs/ADR-006-reuso-dos-padroes-do-projeto.md))
+#### PRD-DEC-06 Decisão: Reuso dos padrões existentes do projeto ([ADR-006](adrs/ADR-006-reuso-dos-padroes-do-projeto.md))
 - **Justificativa:** "Não vamos botar nada novo", e o middleware de erro já trata os erros do módulo ([09:29] Bruno).
 - **Trade-off:** o middleware de validação transforma todo erro de schema em `VALIDATION_ERROR` (`src/middlewares/validate.middleware.ts:31`), e não num código `WEBHOOK_`.
 
@@ -385,19 +385,19 @@ Integrações
 
 ### Dependências
 
-#### Organizacional: revisão de segurança
+#### PRD-DEP-01 Organizacional: revisão de segurança
 Pelo menos dois dias úteis para a Sofia revisar o código de segurança antes do deploy, em especial HMAC e geração de secret ([09:46] Sofia), incluídos nas três sprints ([09:47] Larissa).
 
-#### Organizacional: documentação no portal do desenvolvedor
+#### PRD-DEP-02 Organizacional: documentação no portal do desenvolvedor
 O Marcos documenta no portal como integrar via API ([09:40] Marcos), com destaque para a deduplicação ([09:26] Marcos).
 
-#### Externa: confirmação de prazo com a Atlas
+#### PRD-DEP-03 Externa: confirmação de prazo com a Atlas
 O Marcos confirma o prazo com a Atlas ([09:47] Marcos) e atualiza os clientes ([09:49] Marcos).
 
-#### Externa: preparo dos clientes
+#### PRD-DEP-04 Externa: preparo dos clientes
 O cliente precisa de endpoint `https` ([09:23] Sofia), verificar a assinatura do lado dele ([09:20] Sofia) e estar preparado para receber o mesmo evento duas vezes ([09:24] Diego).
 
-#### Técnica: processo do worker
+#### PRD-DEP-05 Técnica: processo do worker
 O worker é um processo separado, conectado ao mesmo banco ([09:11] Diego, [09:30] Bruno), e carrega a mesma validação de ambiente da API (`src/config/env.ts:3-10`).
 
 ---
