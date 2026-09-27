@@ -89,3 +89,19 @@ Cada entrada registra o que a IA produziu, o que a revisão encontrou e o que mu
 - **Hipóteses declaradas:** 11 defaults (H1 a H11) na seção 1, cada um ligado à questão do RFC que ele destrava, para o FDD ser implementável sem apresentar como decisão do time o que a reunião não decidiu.
 - **Erro encontrado numa ADR já mergeada:** ao ler as classes de erro para a matriz, a IA viu que a correção I1 da ADR-006 (Iteração 3) dizia que só as classes de conflito e de entidade não processável aceitam código próprio. A de requisição inválida também aceita (`src/shared/errors/http-errors.ts:4`). A ADR-006 foi corrigida neste PR. Esse detalhe importa, porque é por essa classe que `WEBHOOK_INVALID_URL` sai com status 400.
 - **Correções na verificação automática:** três referências de linha estavam erradas (paginação em `response.ts`, versão do Prisma e faixa de dependências no `package.json`). A causa foi ler arquivos concatenados, com a numeração contínua entre eles.
+
+## Iteração 7: "se não existe na reunião, remove" aplicado a todo o pacote
+
+- **Regra do usuário:** o que não existe na reunião sai do documento, sem hipóteses nem inferências, e sem deixar de cumprir o enunciado. Fatos do código continuam valendo. Campo obrigatório sem resposta na reunião diz "Não definido na reunião".
+- **FDD:**
+  - Saíram as 11 hipóteses (H1 a H11). No lugar entrou a lista "Não definido na reunião" na seção 1, que aponta para o RFC 5.2 sem escolher por ele.
+  - A matriz de erros ficou só com os 3 códigos citados em [09:28] Bruno. Os 7 códigos inventados saíram, e os demais erros previstos aparecem sem código.
+  - Saíram também: a rota e o método da rotação de secret (a reunião definiu o endpoint, não a rota), o formato da assinatura, a dupla assinatura na carência, a remoção lógica, a DLQ para payload grande, o tamanho do lote, os campos de tentativas e as métricas, os alertas e os logs inventados.
+  - A observabilidade passou a registrar que a reunião não definiu métricas nem tracing, e mostra só os dados definidos na reunião e o que o código já oferece.
+  - Os status HTTP de sucesso seguem a convenção dos controllers existentes.
+  - Com isso, o FDD continua cumprindo o enunciado: 6 endpoints com rota, request, response e status, e matriz com `WEBHOOK_*`.
+- **ADRs:**
+  - Saíram prós e contras que ninguém disse, como "uma única secret para gerenciar", "ponto único de falha" e "reduz a superfície de revisão". Também saíram exemplos deduzidos e frases de análise, como "quem conhece um módulo conhece o de webhooks".
+  - O que tinha origem ganhou citação. Os trade-offs explícitos, que o enunciado exige, foram reescritos só com falas citadas.
+- **RFC:** saiu o risco "worker de instância única para ou fica lento", que vinha da análise e não da reunião.
+- **Mantido:** as lacunas ("a reunião não definiu X") continuam nas ADRs e no RFC 5.2, porque são afirmações verdadeiras sobre a reunião, equivalentes ao "Não definido na reunião".

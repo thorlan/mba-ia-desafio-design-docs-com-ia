@@ -13,9 +13,9 @@
 
 O endpoint do cliente pode estar lento ou fora do ar ([09:14] Larissa). Já houve cliente com duas horas de indisponibilidade numa manutenção planejada ([09:16] Diego).
 
-Sem uma política clara, cada falha vira um dilema. Desistir cedo demais perde eventos que seriam entregues minutos depois. Insistir para sempre deixa eventos pendurados indefinidamente quando o cliente some ([09:15] Diego).
+Desistir cedo demais não cobre indisponibilidades como essa ([09:16] Diego). Insistir para sempre deixa o evento pendurado se o cliente sumiu ([09:15] Diego).
 
-A política também precisa dizer o que acontece com um evento que esgotou as tentativas: onde ele fica, quem pode reprocessá-lo e como isso é auditado.
+A reunião também tratou do evento que esgota as tentativas: onde ele fica ([09:17] Larissa), quem o reprocessa ([09:18] Bruno) e como isso é auditado ([09:36] Sofia).
 
 ## Fatores de Decisão
 
@@ -40,33 +40,31 @@ Esgotadas as tentativas, o evento vai para uma **DLQ em tabela própria**, em ve
 ## Prós e Contras das Alternativas
 
 ### Backoff exponencial com teto e DLQ separada
-- Pró: cobre quedas de até ~15 horas sem intervenção humana.
-- Pró: a DLQ separa os eventos esgotados dos pendentes e concentra o que exige ação.
-- Contra: um evento pode chegar com horas de atraso.
-- Contra: o reprocessamento depende de um administrador.
+- Pró: cobre quase 15 horas entre a primeira falha e a última tentativa ([09:17] Diego).
+- Pró: a DLQ separada deixa mais limpa a leitura da outbox principal e guarda evidência para debug e reprocessamento ([09:18] Diego).
+- Contra: a última retentativa acontece 12 horas depois da anterior ([09:17] Diego).
+- Contra: o reprocessamento é manual e exige administrador ([09:18] Diego, [09:36] Sofia).
 
 ### Retry indefinido com backoff
-- Pró: nunca desiste de um evento.
 - Contra: eventos ficam pendurados para sempre quando o cliente some ([09:15] Diego).
-- Contra: a outbox acumula eventos sem previsão de término.
 
 ### Teto de 3 tentativas
 - Pró: mais agressivo, desiste do evento mais cedo ([09:16] Bruno).
-- Contra: com essa progressão, cobre só ~36 minutos, então "3 é pouco" ([09:16] Diego).
+- Contra: "3 é pouco": a plataforma retentaria "três vezes em 30 minutos" e desistiria ([09:16] Diego).
 - Contra: não cobre a manutenção planejada de duas horas que um cliente já teve ([09:16] Diego).
 
 ## Consequências
 
-**Positivas.** Indisponibilidades temporárias, inclusive manutenções de horas, não causam perda de eventos. Os casos que exigem ação humana ficam isolados e rastreáveis na DLQ, e o reprocessamento não depende de acesso direto ao banco. Acima de 15 horas de indisponibilidade o problema é do cliente ([09:17] Marcos).
+**Positivas.** Indisponibilidades de até quase 15 horas, como a manutenção de duas horas já vista, são cobertas pelas retentativas ([09:16] Diego, [09:17] Diego). Os eventos esgotados ficam na DLQ como evidência para debug e reprocessamento ([09:18] Diego). Acima de 15 horas de indisponibilidade o problema é do cliente ([09:17] Marcos).
 
-**Negativas.** Um evento pode chegar até ~15 horas depois da mudança de status. O cliente não é avisado de forma proativa quando suas entregas falham, porque o aviso por e-mail ficou fora do escopo desta fase ([09:37] Larissa). A reunião não definiu três pontos, que ficam como questões em aberto no RFC: quais respostas HTTP, além da falta de resposta, contam como falha; se o reprocessamento mantém o identificador original do evento; e se o registro de auditoria do reprocessamento é só em log ou também persistido.
+**Negativas.** Um evento pode chegar até quase 15 horas depois da primeira falha ([09:17] Diego). O cliente não é avisado de forma proativa quando suas entregas falham, porque o aviso por e-mail ficou fora do escopo desta fase ([09:37] Larissa). A reunião não definiu três pontos, que ficam como questões em aberto no RFC: quais respostas HTTP, além da falta de resposta, contam como falha; se o reprocessamento mantém o identificador original do evento; e se o registro de auditoria do reprocessamento é só em log ou também persistido.
 
-**Trade-off explícito:** aceitamos entregas tardias e reprocessamento manual em troca de não perder eventos em indisponibilidades temporárias e de não manter eventos pendurados indefinidamente.
+**Trade-off explícito:** aceitamos entregas até quase 15 horas depois ([09:17] Diego) e reprocessamento manual ([09:18] Diego) em troca de cobrir indisponibilidades de horas ([09:16] Diego) sem deixar eventos pendurados para sempre ([09:15] Diego).
 
 ## Referências
 
 - `src/middlewares/auth.middleware.ts:49` (controle de acesso por papel, reaproveitado no reprocessamento)
 - `src/modules/users/user.routes.ts:15` (uso atual da restrição ao papel de administrador)
 - `src/shared/logger/index.ts:13` (logger estruturado, destino do registro de auditoria)
-- `prisma/schema.prisma:116` (histórico de status: padrão de tabela de registro com UUID e índices, seguido pela DLQ)
-- Transcrição: [09:14] Larissa, [09:15] Diego, [09:16] Bruno, [09:16] Diego, [09:17] Diego, [09:17] Marcos, [09:17] Larissa, [09:18] Diego, [09:36] Sofia, [09:36] Larissa, [09:37] Larissa, [09:42] Diego
+- `prisma/schema.prisma:116` (histórico de status: padrão atual de tabela de registro com UUID e índices)
+- Transcrição: [09:14] Larissa, [09:15] Diego, [09:16] Diego, [09:16] Bruno, [09:17] Larissa, [09:17] Diego, [09:17] Marcos, [09:18] Bruno, [09:18] Diego, [09:36] Sofia, [09:36] Larissa, [09:37] Larissa, [09:42] Diego
