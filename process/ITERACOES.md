@@ -81,3 +81,11 @@ Cada entrada registra o que a IA produziu, o que a revisão encontrou e o que mu
   - 5.2 traz as lacunas encontradas na análise, marcadas como não discutidas na reunião.
 - **Lacuna nova:** o mapeamento do código já apontava que a criação do pedido grava o status inicial fora da mudança de status (discrepância 7), mas ela não estava na lista de questões para o RFC. Foi acrescentada ao índice e ao RFC (agora são 14 na seção 5.2).
 - **Correções na verificação automática:** três citações tinham caixa ou aspas diferentes do original ("Observar", "Problema do futuro" e aspas simples dentro de uma citação). Foram ajustadas para bater literalmente com a transcrição.
+
+## Iteração 5: FDD
+
+- **Prompt:** `prompts/06-fdd-entrevista-adaptado.md`, adaptado do prompt de FDD do curso (extraído do Notion) e aprovado pelo usuário no PR antes da geração.
+- **Entrevista:** as respostas vieram das ADRs, do RFC, da transcrição e do código. A única lacuna levada ao usuário foi o responsável técnico. O usuário perguntou se o enunciado define isso; a busca mostrou que não (só o RFC tem metadados, e sem autor definido). A decisão foi Larissa no FDD, alternando com Diego nos próximos documentos.
+- **Hipóteses declaradas:** 11 defaults (H1 a H11) na seção 1, cada um ligado à questão do RFC que ele destrava, para o FDD ser implementável sem apresentar como decisão do time o que a reunião não decidiu.
+- **Erro encontrado numa ADR já mergeada:** ao ler as classes de erro para a matriz, a IA viu que a correção I1 da ADR-006 (Iteração 3) dizia que só as classes de conflito e de entidade não processável aceitam código próprio. A de requisição inválida também aceita (`src/shared/errors/http-errors.ts:4`). A ADR-006 foi corrigida neste PR. Esse detalhe importa, porque é por essa classe que `WEBHOOK_INVALID_URL` sai com status 400.
+- **Correções na verificação automática:** três referências de linha estavam erradas (paginação em `response.ts`, versão do Prisma e faixa de dependências no `package.json`). A causa foi ler arquivos concatenados, com a numeração contínua entre eles.
