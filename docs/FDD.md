@@ -280,7 +280,7 @@ As rotas ficam sob `/api/v1` (`src/app.ts:67`), com autenticação JWT (`src/mid
 - Assinatura/Rota: `/api/v1/webhooks/{id}/deliveries` ([09:34] Marcos)
 - Método: GET
 - Semântica de status/headers:
-  - 200: últimos webhooks enviados, com sucesso ou falha, payload, response e tempo de resposta ([09:34] Marcos); o número 100 foi dado como exemplo: "Tipo 'esses são os últimos 100 webhooks que vocês mandaram pra mim'".
+  - 200: últimos webhooks enviados, com sucesso ou falha, payload, response e tempo de resposta ([09:34] Marcos); o número 100 foi dado como exemplo ("os últimos 100 webhooks que vocês mandaram pra mim", [09:34] Marcos).
   - 404 `WEBHOOK_NOT_FOUND` ([09:28] Bruno).
 - Fonte: [09:34] Marcos
 

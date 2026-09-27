@@ -12,6 +12,7 @@ A regra que mais pesou é a de não inventar nada: toda afirmação precisa ser 
 
 - **Claude Code com o modelo Opus 5.5:** leitura do repositório e da transcrição, adaptação dos prompts do curso, geração de todos os documentos, scripts de validação, commits e pull requests.
 - **Subagente do Claude Code com o modelo Fable 5.1:** revisão independente das ADRs contra o template do curso. Usei um modelo diferente do que escreveu, para ter um olhar que não compartilhasse os mesmos vieses. A revisão está na Iteração 3.
+- **Subagentes com Fable, Sonnet, Haiku e Opus:** revisão final do pacote inteiro contra o enunciado, em paralelo e só leitura. A revisão está na Iteração 9.
 - **Plugin `adrs-management` e prompts do curso:** não são ferramentas de IA à parte, mas foram a base de todos os prompts. Os agentes do plugin (`adr-analyzer`, `adr-generator`, `adr-linker`) e os prompts de entrevista de PRD e de FDD do Notion do curso foram lidos pelo Claude Code e adaptados para responder a partir da transcrição.
 
 ## Workflow adotado
@@ -28,6 +29,8 @@ A regra que mais pesou é a de não inventar nada: toda afirmação precisa ser 
 | #4 | PRD: prompt e documento |
 | #5 | Regra "se não existe na reunião, remove" aplicada ao FDD, às ADRs e ao RFC |
 | #6 | Tracker: prompt e documento, com IDs acrescentados ao RFC, ao PRD e ao FDD |
+| #7 | README do processo |
+| #8 | Correções da revisão final feita por quatro modelos (Fable, Sonnet, Haiku e Opus) |
 
 **Sem template, não escreve.** A primeira tentativa, sem template, foi descartada (Iteração 0). Depois disso, todo documento partiu de um template do curso. Quando o curso não tinha um (RFC e Tracker), o prompt foi montado no mesmo estilo e aprovado por mim num PR antes de gerar o documento.
 
@@ -163,7 +166,7 @@ Tudo isso precisa aparecer no PRD final.
 
 ## Iterações e ajustes
 
-O registro completo está em [`process/ITERACOES.md`](process/ITERACOES.md). Foram 9 iterações, numeradas de 0 a 8, depois da exploração inicial. Os momentos em que a IA errou ou ficou superficial e eu tive que corrigir:
+O registro completo está em [`process/ITERACOES.md`](process/ITERACOES.md). Foram 10 iterações, numeradas de 0 a 9, depois da exploração inicial. Os momentos em que a IA errou ou ficou superficial e eu tive que corrigir:
 
 1. **ADRs sem template (descartadas).** Logo depois de explorar o repositório, a IA escreveu 7 ADRs direto da transcrição. Elas tinham campos fora do MADR, nomes de função e de tabela proibidos pelo gerador do curso e travessões. A etapa de Potential ADR tinha sido pulada. Mandei parar, passei os templates do curso, e os 7 arquivos foram apagados.
 2. **Prompt do curso que não servia para uma reunião.** No plugin de ADR, uma decisão fora do "Step 0" nunca passa de 75 pontos e nunca vira *must document*. Aplicado à reunião, isso deixaria sem prioridade até o padrão Outbox. O Step 0 foi adaptado para exigir que a decisão tenha sido fechada explicitamente na reunião.
@@ -176,6 +179,13 @@ O registro completo está em [`process/ITERACOES.md`](process/ITERACOES.md). For
 4. **Erro que sobreviveu à revisão.** Ao escrever o FDD, a IA percebeu que a correção anterior da ADR-006 estava incompleta: a classe de requisição inválida também aceita código próprio. A ADR foi corrigida no PR do FDD.
 5. **Hipóteses no lugar de fatos.** O FDD saiu com 11 hipóteses marcadas, e a primeira versão do PRD trazia p95 de 150 ms, 99,9% de disponibilidade, uma meta de clientes, contingências e testes que ninguém tinha dito. Ao revisar o PRD, defini a regra: se não existe na reunião, remove. Fato do código continua valendo, e campo obrigatório sem resposta diz "Não definido na reunião". A regra foi aplicada ao PRD, ao FDD, às ADRs e ao RFC. Saíram as 11 hipóteses, 7 códigos de erro inventados, prós e contras sem fonte e um risco que vinha da análise.
 6. **O que escapou da auditoria.** Ao gerar o Tracker, apareceram três trechos inventados no RFC que o script de auditoria não tinha pegado, porque as linhas já tinham outras citações. Um exemplo é "Seria reativa", sobre Redis Streams. A primeira versão do Tracker também tinha 5 erros de extração, como a fonte de riscos vinda da mitigação e não da coluna de fonte. Os dois foram corrigidos antes do merge.
+7. **Revisão final com quatro modelos.** Com o pacote entregue, pedi uma revisão contra o enunciado com os quatro modelos disponíveis, sem alterar nada. Nenhum critério falhou, mas o Fable e o Opus acharam o que as auditorias por script não pegavam:
+   - uma rota com o customer na query string, quando a reunião disse "no body ou no path";
+   - um diagrama de estados que contradizia a ADR-003;
+   - prioridades dos requisitos e um método HTTP que ninguém disse;
+   - um exemplo que respondia sem querer uma questão em aberto.
+
+   O Haiku trouxe um achado falso, e o Sonnet não viu esses problemas. Conferi cada achado no arquivo antes de corrigir. O RFC também foi enxugado para caber em 4 páginas, e o Tracker foi ampliado.
 
 ## Como navegar a entrega
 

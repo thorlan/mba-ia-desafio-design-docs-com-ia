@@ -285,7 +285,7 @@ Um administrador reprocessa manualmente um evento da DLQ, e a operação registr
 ---
 
 #### PRD-FR-13 Consultar histórico de entregas
-O cliente vê as últimas entregas de um webhook, com sucesso ou falha, payload, resposta e tempo de resposta ([09:34] Marcos); o número 100 foi dado como exemplo: "Tipo 'esses são os últimos 100 webhooks que vocês mandaram pra mim'".
+O cliente vê as últimas entregas de um webhook, com sucesso ou falha, payload, resposta e tempo de resposta ([09:34] Marcos); o número 100 foi dado como exemplo ("os últimos 100 webhooks que vocês mandaram pra mim", [09:34] Marcos).
 
 **Fluxo principal**
 - O usuário pede o histórico de um webhook ([09:34] Marcos).
