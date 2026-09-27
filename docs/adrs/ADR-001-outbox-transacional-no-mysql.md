@@ -53,7 +53,6 @@ O evento é gravado pela própria transação de mudança de status ([09:41] Bru
 ### Fila externa (Redis Streams ou similar)
 - Contra: exige subir e operar infraestrutura nova ([09:07] Larissa).
 - Contra: *overengineering* para um time pequeno ([09:07] Diego).
-- Contra: publicar fora da transação "perde a garantia toda" ([09:41] Diego).
 
 ## Consequências
 

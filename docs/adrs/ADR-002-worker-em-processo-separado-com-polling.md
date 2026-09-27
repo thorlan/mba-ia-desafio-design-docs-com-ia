@@ -17,7 +17,7 @@ Com os eventos gravados na outbox ([ADR-001](ADR-001-outbox-transacional-no-mysq
 
 O MySQL não tem um mecanismo nativo para avisar processos externos de que uma linha foi inserida, como o NOTIFY/LISTEN do Postgres. Uma trigger só executa SQL e não acorda outro processo ([09:09] Diego).
 
-Hoje a aplicação roda num único processo HTTP, com desligamento gracioso (`src/server.ts:6-21`). Se a entrega de webhooks rodar dentro dele, cada deploy ou restart da API interrompe as entregas ([09:11] Diego).
+Hoje a aplicação roda num único processo HTTP, com desligamento gracioso (`src/server.ts:6-21`). Se o worker rodar dentro dele, um restart da API derruba o worker junto ([09:11] Diego).
 
 ## Fatores de Decisão
 
@@ -67,6 +67,6 @@ O worker roda como processo próprio ao lado do servidor HTTP ([09:11] Larissa),
 
 - `src/server.ts:6` (entry point atual, com desligamento gracioso nas linhas 20-21; modelo para o novo entry point)
 - `src/config/database.ts:4` (criação do client do ORM; cada processo cria o seu)
-- `src/config/env.ts:27` (validação do ambiente na carga, herdada pelo worker)
+- `src/config/env.ts:27` (validação do ambiente na carga)
 - `package.json:10` (scripts de execução, onde entra o script do worker)
 - Transcrição: [09:02] Marcos, [09:08] Diego, [09:09] Diego, [09:09] Bruno, [09:10] Marcos, [09:10] Larissa, [09:11] Diego, [09:11] Larissa, [09:12] Diego, [09:13] Larissa, [09:13] Diego, [09:14] Marcos, [09:30] Bruno

@@ -51,39 +51,39 @@ Os pontos abaixo afetam a implementação e não foram definidos na reunião. Es
 ## 3. Escopo e exclusões
 
 **Incluído**
-- Inserção na outbox dentro da transação de mudança de status ([09:40] Bruno), com filtro na inserção ([09:34] Bruno) e payload renderizado na inserção ([09:52] Larissa).
-- Worker em polling de 2 s ([09:10] Larissa), com retry e backoff e DLQ em tabela separada ([09:17] Larissa, [09:18] Diego).
-- Cadastro (POST), edição (PATCH), remoção (DELETE) e listagem por customer (GET) de webhooks ([09:31] Marcos, [09:33] Bruno).
-- Rotação de secret pela API, com carência de 24 h ([09:21] Sofia).
-- Histórico de entregas por webhook ([09:34] Marcos).
-- Replay manual da DLQ, com papel `ADMIN` e log de quem fez ([09:18] Diego, [09:36] Sofia).
+- FDD-ESC-01 Inserção na outbox dentro da transação de mudança de status ([09:40] Bruno), com filtro na inserção ([09:34] Bruno) e payload renderizado na inserção ([09:52] Larissa).
+- FDD-ESC-02 Worker em polling de 2 s ([09:10] Larissa), com retry e backoff e DLQ em tabela separada ([09:17] Larissa, [09:18] Diego).
+- FDD-ESC-03 Cadastro (POST), edição (PATCH), remoção (DELETE) e listagem por customer (GET) de webhooks ([09:31] Marcos, [09:33] Bruno).
+- FDD-ESC-04 Rotação de secret pela API, com carência de 24 h ([09:21] Sofia).
+- FDD-ESC-05 Histórico de entregas por webhook ([09:34] Marcos).
+- FDD-ESC-06 Replay manual da DLQ, com papel `ADMIN` e log de quem fez ([09:18] Diego, [09:36] Sofia).
 
 **Excluído**
-- Webhooks de entrada ([09:02] Marcos).
-- E-mail em falhas seguidas ([09:37] Larissa).
-- Rate limiting de saída, em observação ([09:39] Larissa).
-- Painel visual ([09:40] Larissa).
-- Arquivamento de eventos entregues ([09:08] Diego).
-- Vários workers ([09:13] Diego).
+- FDD-EXC-01 Webhooks de entrada ([09:02] Marcos).
+- FDD-EXC-02 E-mail em falhas seguidas ([09:37] Larissa).
+- FDD-EXC-03 Rate limiting de saída, em observação ([09:39] Larissa).
+- FDD-EXC-04 Painel visual ([09:40] Larissa).
+- FDD-EXC-05 Arquivamento de eventos entregues ([09:08] Diego).
+- FDD-EXC-06 Vários workers ([09:13] Diego).
 
 ## 4. Fluxos detalhados e diagramas
 
 **Fluxo principal**
-1. Um usuário muda o status de um pedido pela rota existente (`src/modules/orders/order.routes.ts:19-23`).
-2. Dentro da transação, o serviço de pedidos chama `publishWebhookEvent(tx, order, fromStatus, toStatus)` com o client da transação atual ([09:41] Bruno), depois de gravar o histórico (`src/modules/orders/order.service.ts:159-167`).
-3. A função verifica se algum webhook do customer quer aquele status; se nenhum quer, nem insere ([09:34] Bruno).
-4. Se houver, insere na `webhook_outbox` o evento ([09:06] Diego), com UUID ([09:51] Larissa) e o payload já renderizado ([09:52] Larissa, [09:52] Diego), com status pendente ([09:08] Diego). Se a inserção falhar, a transação sofre rollback ([09:40] Bruno).
-5. A cada 2 s, o worker busca os eventos pendentes mais antigos, em batch pequeno ([09:08] Diego, [09:09] Diego).
-6. Para cada evento, o worker assina o corpo com HMAC-SHA256 e a secret do endpoint ([09:22] Sofia) e faz a chamada HTTP, com timeout de 10 s ([09:42] Diego).
-7. O worker registra a entrega no histórico: sucesso ou falha, payload, response e tempo de resposta ([09:34] Marcos).
-8. O worker marca o evento como entregue ([09:08] Diego, [09:09] Diego). Quais respostas contam como sucesso: não definido na reunião.
+1. FDD-FLX-01 Um usuário muda o status de um pedido pela rota existente (`src/modules/orders/order.routes.ts:19-23`).
+2. FDD-FLX-02 Dentro da transação, o serviço de pedidos chama `publishWebhookEvent(tx, order, fromStatus, toStatus)` com o client da transação atual ([09:41] Bruno), depois de gravar o histórico (`src/modules/orders/order.service.ts:159-167`).
+3. FDD-FLX-03 A função verifica se algum webhook do customer quer aquele status; se nenhum quer, nem insere ([09:34] Bruno).
+4. FDD-FLX-04 Se houver, insere na `webhook_outbox` o evento ([09:06] Diego), com UUID ([09:51] Larissa) e o payload já renderizado ([09:52] Larissa, [09:52] Diego), com status pendente ([09:08] Diego). Se a inserção falhar, a transação sofre rollback ([09:40] Bruno).
+5. FDD-FLX-05 A cada 2 s, o worker busca os eventos pendentes mais antigos, em batch pequeno ([09:08] Diego, [09:09] Diego).
+6. FDD-FLX-06 Para cada evento, o worker assina o corpo com HMAC-SHA256 e a secret do endpoint ([09:22] Sofia) e faz a chamada HTTP, com timeout de 10 s ([09:42] Diego).
+7. FDD-FLX-07 O worker registra a entrega no histórico: sucesso ou falha, payload, response e tempo de resposta ([09:34] Marcos).
+8. FDD-FLX-08 O worker marca o evento como entregue ([09:08] Diego, [09:09] Diego). Quais respostas contam como sucesso: não definido na reunião.
 
 **Fluxos alternativos e exceções**
-- **Falha ou timeout:** o cliente que não responde em 10 s é tratado como falha e marcado para retry ([09:42] Diego), no próximo intervalo da progressão de 1 min, 5 min, 30 min, 2 h e 12 h ([09:17] Diego).
-- **Tentativas esgotadas:** depois do teto, o evento é falha permanente e vai para a DLQ ([09:15] Diego), a `webhook_dead_letter`, com o payload, o motivo da falha e o timestamp ([09:18] Diego).
-- **Payload acima de 64 KB:** "a gente não envia" ([09:23] Sofia), e ocorre erro ([09:24] Larissa). Onde o erro é registrado: não definido na reunião.
-- **Replay:** um administrador faz o replay de um evento da DLQ, que é recolocado na outbox como pendente ([09:18] Diego); o sistema loga quem fez ([09:36] Sofia).
-- **Rotação de secret:** o cliente pede uma nova secret pela API; a antiga fica válida por 24 h em paralelo e depois deixa de valer ([09:21] Sofia).
+- FDD-EXCE-01 **Falha ou timeout:** o cliente que não responde em 10 s é tratado como falha e marcado para retry ([09:42] Diego), no próximo intervalo da progressão de 1 min, 5 min, 30 min, 2 h e 12 h ([09:17] Diego).
+- FDD-EXCE-02 **Tentativas esgotadas:** depois do teto, o evento é falha permanente e vai para a DLQ ([09:15] Diego), a `webhook_dead_letter`, com o payload, o motivo da falha e o timestamp ([09:18] Diego).
+- FDD-EXCE-03 **Payload acima de 64 KB:** "a gente não envia" ([09:23] Sofia), e ocorre erro ([09:24] Larissa). Onde o erro é registrado: não definido na reunião.
+- FDD-EXCE-04 **Replay:** um administrador faz o replay de um evento da DLQ, que é recolocado na outbox como pendente ([09:18] Diego); o sistema loga quem fez ([09:36] Sofia).
+- FDD-EXCE-05 **Rotação de secret:** o cliente pede uma nova secret pela API; a antiga fica válida por 24 h em paralelo e depois deixa de valer ([09:21] Sofia).
 
 **Diagrama de sequência: do status à entrega**
 
@@ -99,24 +99,23 @@ sequenceDiagram
     DB-->>API: commit (ou rollback de tudo)
     loop a cada 2 s
         W->>DB: lê pendentes mais antigos (batch pequeno)
-        W->>C: POST assinado com HMAC-SHA256 (timeout 10 s)
+        W->>C: chamada HTTP assinada com HMAC-SHA256 (timeout 10 s)
         C-->>W: resposta
         W->>DB: registra a entrega e marca o evento
     end
 ```
 
-**Diagrama de estados do evento na outbox**
+**Diagrama do ciclo do evento**
 
-Os quatro estados são os citados em [09:08] Diego: pendente, processando, falhou e entregue.
+O diagrama mostra só as passagens ditas na reunião. Os estados processando e falhou foram citados em [09:08] Diego, mas as transições que passam por eles não foram definidas.
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Pendente: inserido na transação
-    Pendente --> Processando: lido pelo worker
-    Processando --> Entregue: entrega com sucesso
-    Processando --> Pendente: falha, retry agendado
-    Processando --> Falhou: tentativas esgotadas (vai para a DLQ)
-    Falhou --> Pendente: replay por administrador
+    [*] --> Pendente: inserido na transação ([09:06] Diego)
+    Pendente --> Entregue: worker processa e marca como entregue ([09:08] Diego)
+    Pendente --> Pendente: falha, marcado para retry ([09:42] Diego)
+    Pendente --> DLQ: tentativas esgotadas ([09:15] Diego)
+    DLQ --> Pendente: replay, recolocado na outbox como pendente ([09:18] Diego)
     Entregue --> [*]
 ```
 
@@ -124,12 +123,12 @@ stateDiagram-v2
 
 As tabelas seguem o padrão do schema: identificador UUID em `Char(36)` ([09:51] Larissa, `prisma/schema.prisma:26`), `@@index` e `@@map` (`prisma/schema.prisma:116-131`).
 
-| Tabela | Conteúdo definido na reunião | Fonte |
-| --- | --- | --- |
-| Configuração de webhook (nome não definido na reunião) | URL, secret, customer, estado ativo e lista de status que o webhook quer ouvir; para a rotação, também a secret antiga até o fim da carência de 24 h | [09:21] Bruno, [09:21] Sofia, [09:33] Marcos |
-| `webhook_outbox` | Evento com UUID (`event_id`), payload renderizado, status (pendente, processando, falhou, entregue) e `created_at`, com índice em status e em `created_at` | [09:06] Diego, [09:08] Diego, [09:25] Diego, [09:52] Larissa |
-| `webhook_dead_letter` | Payload, motivo da falha e timestamp | [09:18] Diego |
-| Histórico de entregas (nome não definido na reunião) | Por entrega: sucesso ou falha, payload, response e tempo de resposta | [09:34] Marcos |
+| ID | Tabela | Conteúdo definido na reunião | Fonte |
+| --- | --- | --- | --- |
+| FDD-TAB-01 | Configuração de webhook (nome não definido na reunião) | URL, secret, customer, estado ativo e lista de status que o webhook quer ouvir; na rotação, a secret antiga continua válida por 24 h, e como isso é guardado não foi definido na reunião | [09:21] Bruno, [09:21] Sofia, [09:33] Marcos |
+| FDD-TAB-02 | `webhook_outbox` | Evento com UUID (`event_id`), payload renderizado, status (pendente, processando, falhou, entregue) e `created_at`, com índice em status e em `created_at` | [09:06] Diego, [09:08] Diego, [09:25] Diego, [09:52] Larissa |
+| FDD-TAB-03 | `webhook_dead_letter` | Payload, motivo da falha e timestamp | [09:18] Diego |
+| FDD-TAB-04 | Histórico de entregas (nome não definido na reunião) | Por entrega: sucesso ou falha, payload, response e tempo de resposta | [09:34] Marcos |
 
 Como a outbox registra o número de tentativas e o horário da próxima: não definido na reunião.
 
@@ -144,7 +143,7 @@ Como a outbox registra o número de tentativas e o horário da próxima: não de
 | FDD-PARAM-05 | Tamanho máximo do payload | 64 KB | [09:24] Larissa |
 | FDD-PARAM-06 | Carência da secret antiga | 24 h | [09:21] Sofia |
 | FDD-PARAM-07 | Tipo do evento | `order.status_changed` | [09:43] Diego |
-| FDD-PARAM-08 | Itens do histórico | últimos 100 | [09:34] Marcos |
+| FDD-PARAM-08 | Itens do histórico | 100, citado como exemplo | [09:34] Marcos |
 
 ## 5. Contratos públicos (assinaturas, endpoints, headers, exemplos)
 
@@ -182,17 +181,17 @@ As rotas ficam sob `/api/v1` (`src/app.ts:67`), com autenticação JWT (`src/mid
 
 ### FDD-CONTRATO-02: Listar webhooks de um customer
 - Tipo: endpoint
-- Assinatura/Rota: `/api/v1/webhooks?customerId={uuid}`
+- Assinatura/Rota: o customer é passado no body ou no path ([09:32] Larissa); a rota exata da listagem não foi definida na reunião
 - Método: GET ([09:33] Bruno)
 - Semântica de status/headers:
-  - 200: webhooks do customer, no formato paginado da API (`src/shared/http/response.ts:22-24`).
+  - 200: webhooks do customer. Formato de paginação: não definido na reunião.
 - Fonte: [09:33] Bruno
 
 **Exemplo de requisição**
 ```json
 {}
 ```
-(sem corpo; o customer vai na query string)
+(sem corpo)
 
 **Exemplo de resposta**
 ```json
@@ -205,8 +204,7 @@ As rotas ficam sob `/api/v1` (`src/app.ts:67`), com autenticação JWT (`src/mid
       "events": ["SHIPPED", "DELIVERED"],
       "active": true
     }
-  ],
-  "pagination": { "page": 1, "pageSize": 20, "total": 1, "totalPages": 1 }
+  ]
 }
 ```
 
@@ -215,7 +213,7 @@ As rotas ficam sob `/api/v1` (`src/app.ts:67`), com autenticação JWT (`src/mid
 - Assinatura/Rota: `/api/v1/webhooks/{id}`
 - Método: PATCH ([09:33] Bruno)
 - Semântica de status/headers:
-  - 200: webhook atualizado; por endpoint dá para escolher quais eventos receber ([09:33] Bruno), além da URL e do estado ativo ([09:21] Bruno).
+  - 200: webhook atualizado. Quais campos podem ser alterados: não definido na reunião.
   - 404 `WEBHOOK_NOT_FOUND` ([09:28] Bruno).
 - Fonte: [09:33] Bruno
 
@@ -223,6 +221,7 @@ As rotas ficam sob `/api/v1` (`src/app.ts:67`), com autenticação JWT (`src/mid
 ```json
 { "events": ["PAID", "SHIPPED", "DELIVERED"] }
 ```
+(ilustrativo: "Por endpoint a gente pode escolher quais eventos receber", [09:33] Bruno)
 
 **Exemplo de resposta**
 ```json
@@ -281,7 +280,7 @@ As rotas ficam sob `/api/v1` (`src/app.ts:67`), com autenticação JWT (`src/mid
 - Assinatura/Rota: `/api/v1/webhooks/{id}/deliveries` ([09:34] Marcos)
 - Método: GET
 - Semântica de status/headers:
-  - 200: últimos 100 webhooks enviados, com sucesso ou falha, payload, response e tempo de resposta ([09:34] Marcos).
+  - 200: últimos webhooks enviados, com sucesso ou falha, payload, response e tempo de resposta ([09:34] Marcos); o número 100 foi dado como exemplo: "Tipo 'esses são os últimos 100 webhooks que vocês mandaram pra mim'".
   - 404 `WEBHOOK_NOT_FOUND` ([09:28] Bruno).
 - Fonte: [09:34] Marcos
 
@@ -322,13 +321,14 @@ As rotas ficam sob `/api/v1` (`src/app.ts:67`), com autenticação JWT (`src/mid
 
 **Exemplo de resposta**
 ```json
-{ "event_id": "0f8e7d6c-5b4a-4938-8271-6a5b4c3d2e1f", "status": "pendente" }
+{}
 ```
+(o corpo da resposta não foi definido na reunião; se o replay mantém o identificador original está em aberto, RFC-QB-08)
 
 ### FDD-CONTRATO-08: Envio ao cliente (saída do worker)
 - Tipo: endpoint (chamada que o worker faz à URL cadastrada)
 - Assinatura/Rota: URL cadastrada no webhook
-- Método: POST ([09:06] Diego: o worker fica "disparando as chamadas HTTP")
+- Método: não definido na reunião; o worker fica "disparando as chamadas HTTP" ([09:06] Diego)
 - Semântica de status/headers ([09:44] Diego, [09:44] Sofia):
   - `Content-Type: application/json`.
   - `X-Event-Id`: o UUID do evento.
@@ -396,27 +396,27 @@ Os códigos são os citados na reunião, com o prefixo `WEBHOOK_` para tudo do m
 | FDD-ERRO-03 | `WEBHOOK_SECRET_REQUIRED` | Não definido na reunião | Não definida na reunião | Não definido na reunião | [09:28] Bruno |
 
 **Outros erros previstos, sem código definido na reunião**
-- URL `http`: "recusamos com erro de validação" ([09:23] Sofia).
-- Payload acima de 64 KB: não envia, e ocorre erro ([09:23] Sofia, [09:24] Larissa).
-- Cliente sem resposta em 10 s: falha, com retry ([09:42] Diego).
-- Replay sem role `ADMIN`: `FORBIDDEN` (403) do `requireRole` existente ([09:36] Larissa, `src/middlewares/auth.middleware.ts:55-57`).
-- Corpo inválido nas rotas: `VALIDATION_ERROR` (400) do middleware de validação (`src/middlewares/validate.middleware.ts:31`).
+- FDD-ERRS-01 URL `http`: "recusamos com erro de validação" ([09:23] Sofia).
+- FDD-ERRS-02 Payload acima de 64 KB: não envia, e ocorre erro ([09:23] Sofia, [09:24] Larissa).
+- FDD-ERRS-03 Cliente sem resposta em 10 s: falha, com retry ([09:42] Diego).
+- FDD-ERRS-04 Replay sem role `ADMIN`: `FORBIDDEN` (403) do `requireRole` existente ([09:36] Larissa, `src/middlewares/auth.middleware.ts:55-57`).
+- FDD-ERRS-05 Corpo inválido nas rotas: `VALIDATION_ERROR` (400) do middleware de validação (`src/middlewares/validate.middleware.ts:31`).
 
 ### 6.2 Estratégias de resiliência
-- **Timeout:** 10 s por chamada ([09:42] Diego).
-- **Retries com backoff exponencial:** 5 tentativas, em 1 min, 5 min, 30 min, 2 h e 12 h ([09:17] Larissa), quase 15 h entre a primeira falha e a última tentativa ([09:17] Diego).
-- **DLQ:** depois do teto, falha permanente e DLQ ([09:15] Diego), em tabela separada ([09:18] Diego).
+- FDD-RES-01 **Timeout:** 10 s por chamada ([09:42] Diego).
+- FDD-RES-02 **Retries com backoff exponencial:** 5 retentativas, em 1 min, 5 min, 30 min, 2 h e 12 h ([09:17] Larissa), quase 15 h entre a primeira falha e a última tentativa ([09:17] Diego).
+- FDD-RES-03 **DLQ:** depois do teto, falha permanente e DLQ ([09:15] Diego), em tabela separada ([09:18] Diego).
 - **Circuit breaker:** não definido na reunião.
 
 ### 6.3 Política de fallback
-- Sem aviso proativo ao cliente nesta fase: e-mail fica para uma próxima fase ([09:37] Larissa).
-- Reprocessamento manual por endpoint admin ([09:18] Diego).
+- FDD-FALL-01 Sem aviso proativo ao cliente nesta fase: e-mail fica para uma próxima fase ([09:37] Larissa).
+- FDD-FALL-02 Reprocessamento manual por endpoint admin ([09:18] Diego).
 
 ### 6.4 Invariantes
-- Status mudou, evento existe; rollback, evento some: "Não tem inconsistência possível" ([09:06] Diego).
-- "Não pode ter caso de status mudar e evento não sair" ([09:40] Bruno).
-- O evento reflete o estado de quando o status mudou, mesmo que o pedido mude depois ([09:52] Larissa).
-- No máximo 6 chamadas por evento antes da DLQ: o envio inicial e 5 retentativas ([09:17] Diego).
+- FDD-INV-01 Status mudou, evento existe; rollback, evento some: "Não tem inconsistência possível" ([09:06] Diego).
+- FDD-INV-02 "Não pode ter caso de status mudar e evento não sair" ([09:40] Bruno).
+- FDD-INV-03 O evento reflete o estado de quando o status mudou, mesmo que o pedido mude depois ([09:52] Larissa).
+- FDD-INV-04 No máximo 6 chamadas por evento antes da DLQ: o envio inicial e 5 retentativas ([09:17] Diego).
 
 ## 7. Observabilidade
 
@@ -424,17 +424,17 @@ A reunião não definiu métricas nem tracing. Esta seção registra o que a reu
 
 **Métricas**
 - Métricas: não definidas na reunião.
-- Os dados que a reunião definiu permitem medir: o tempo de resposta e o resultado de cada entrega, guardados no histórico ([09:34] Marcos); a meta de entrega em menos de 10 s ([09:02] Marcos); e o volume por cliente, que o time vai "observar" antes de decidir sobre rate limiting ([09:39] Larissa).
-- A API já registra, por requisição, o status HTTP e a duração em milissegundos (`src/middlewares/request-logger.middleware.ts:12-24`).
+- FDD-OBS-01 Os dados que a reunião definiu permitem medir: o tempo de resposta e o resultado de cada entrega, guardados no histórico ([09:34] Marcos); a meta de entrega em menos de 10 s ([09:02] Marcos); e o volume por cliente, que o time vai "observar" antes de decidir sobre rate limiting ([09:39] Larissa).
+- FDD-OBS-02 A API já registra, por requisição, o status HTTP e a duração em milissegundos (`src/middlewares/request-logger.middleware.ts:12-24`).
 
 **Logs**
-- Logger Pino já existente, sem nada novo ([09:29] Bruno), com JSON estruturado e campos base fixos (`src/shared/logger/index.ts:13-30`).
-- O replay loga quem fez, para auditoria ([09:36] Sofia).
-- A lista de campos mascarados cobre senhas e tokens, mas não secrets (`src/shared/logger/index.ts:4-11`). O mascaramento da secret não foi definido na reunião.
+- FDD-OBS-03 Logger Pino já existente, sem nada novo ([09:29] Bruno), com JSON estruturado e campos base fixos (`src/shared/logger/index.ts:13-30`).
+- FDD-OBS-04 O replay loga quem fez, para auditoria ([09:36] Sofia).
+- FDD-OBS-05 A lista de campos mascarados cobre senhas e tokens, mas não secrets (`src/shared/logger/index.ts:4-11`). O mascaramento da secret não foi definido na reunião.
 
 **Tracing**
 - Tracing: não definido na reunião.
-- Identificadores de correlação existentes: o `X-Request-Id` gerado por requisição (`src/middlewares/request-logger.middleware.ts:6-8`), o `event_id`, que vai no header `X-Event-Id` e no payload ([09:25] Diego, [09:43] Diego), e o `X-Webhook-Id` ([09:44] Sofia).
+- FDD-OBS-06 Identificadores de correlação existentes: o `X-Request-Id` gerado por requisição (`src/middlewares/request-logger.middleware.ts:6-8`), o `event_id`, que vai no header `X-Event-Id` e no payload ([09:25] Diego, [09:43] Diego), e o `X-Webhook-Id` ([09:44] Sofia).
 
 **Dashboards e alertas**
 - Não definidos na reunião.
@@ -442,14 +442,14 @@ A reunião não definiu métricas nem tracing. Esta seção registra o que a reu
 ## 8. Dependências e compatibilidade
 
 **Dependências**
-- Node.js 20 ou superior (`package.json:8`), sem biblioteca nova ([09:29] Bruno).
-- MySQL 8.0 existente (`docker-compose.yml:3`) e Prisma 5.22.0 (`package.json:26`), com o mesmo banco ([09:07] Diego).
-- Express, Zod, Pino e uuid, já no projeto (`package.json:28-33`).
-- Revisão de segurança de pelo menos dois dias úteis antes do deploy ([09:46] Sofia).
+- FDD-DEP-01 Node.js 20 ou superior (`package.json:8`), sem biblioteca nova ([09:29] Bruno).
+- FDD-DEP-02 MySQL 8.0 existente (`docker-compose.yml:3`) e Prisma 5.22.0 (`package.json:26`), com o mesmo banco ([09:07] Diego).
+- FDD-DEP-03 Express, Zod, Pino e uuid, já no projeto (`package.json:28-33`).
+- FDD-DEP-04 Revisão de segurança de pelo menos dois dias úteis antes do deploy ([09:46] Sofia).
 
 **Garantias de compatibilidade**
-- O middleware de erro "Vai pegar nossos erros sem precisar mudar nada" ([09:29] Bruno).
-- A alteração no código existente é dentro do service de orders, no `changeStatus` ([09:40] Bruno); a rota de mudança de status não muda (`src/modules/orders/order.routes.ts:19-23`).
+- FDD-COMPAT-01 O middleware de erro "Vai pegar nossos erros sem precisar mudar nada" ([09:29] Bruno).
+- FDD-COMPAT-02 A alteração no código existente é dentro do service de orders, no `changeStatus` ([09:40] Bruno); a rota de mudança de status não muda (`src/modules/orders/order.routes.ts:19-23`).
 
 ## 9. Critérios de aceite técnicos
 
@@ -458,7 +458,7 @@ Os testes seguem o padrão atual, com Vitest e Supertest contra a API (`tests/or
 - [ ] FDD-CA-01: mudar o status para um status que um webhook do customer quer ouvir insere o evento na outbox na mesma transação ([09:40] Bruno).
 - [ ] FDD-CA-02: se nenhum webhook do customer quer o status, nada é inserido ([09:34] Bruno).
 - [ ] FDD-CA-03: se a inserção na outbox falhar, a mudança de status sofre rollback ([09:40] Bruno).
-- [ ] FDD-CA-04: o evento é entregue em menos de 10 s após a mudança de status ([09:02] Marcos).
+- [ ] FDD-CA-04: a primeira tentativa de entrega acontece em menos de 10 s após a mudança de status ([09:02] Marcos, [09:10] Larissa).
 - [ ] FDD-CA-05: o envio traz `X-Event-Id`, `X-Signature`, `X-Timestamp`, `X-Webhook-Id` e `Content-Type` ([09:44] Diego, [09:44] Sofia), e a assinatura HMAC-SHA256 do corpo confere com a secret do endpoint ([09:22] Sofia).
 - [ ] FDD-CA-06: uma entrega que sempre falha é retentada 5 vezes, em 1 min, 5 min, 30 min, 2 h e 12 h, e termina na DLQ com payload, motivo e timestamp ([09:17] Larissa, [09:18] Diego).
 - [ ] FDD-CA-07: um cliente que não responde em 10 s conta como falha e vai para retry ([09:42] Diego).
@@ -466,8 +466,8 @@ Os testes seguem o padrão atual, com Vitest e Supertest contra a API (`tests/or
 - [ ] FDD-CA-09: uma URL `http` é recusada com erro de validação ([09:23] Sofia).
 - [ ] FDD-CA-10: depois de uma rotação, a secret antiga fica válida por 24 h e depois deixa de valer ([09:21] Sofia).
 - [ ] FDD-CA-11: um payload acima de 64 KB não é enviado ([09:23] Sofia, [09:24] Larissa).
-- [ ] FDD-CA-12: o histórico devolve os últimos 100 envios, com sucesso ou falha, payload, response e tempo de resposta ([09:34] Marcos).
-- [ ] FDD-CA-13: com um único worker, os eventos de um pedido são entregues na ordem de `created_at` ([09:12] Diego).
+- [ ] FDD-CA-12: o histórico devolve os últimos envios (a reunião citou 100 como exemplo), com sucesso ou falha, payload, response e tempo de resposta ([09:34] Marcos).
+- [ ] FDD-CA-13: com um único worker, os eventos são processados na ordem de `created_at` da outbox ([09:12] Diego); a ordem com um evento anterior em retentativa não foi definida (RFC-QB-05).
 - [ ] FDD-CA-14: os códigos de erro do módulo têm o prefixo `WEBHOOK_` ([09:29] Larissa).
 
 ## 10. Riscos e mitigação

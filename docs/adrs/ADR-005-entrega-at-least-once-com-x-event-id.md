@@ -17,7 +17,7 @@ A plataforma precisa declarar qual garantia de entrega oferece e dar ao cliente 
 
 ## Fatores de Decisão
 
-- Nunca perder uma mudança de status, mesmo que isso gere repetições ([09:24] Diego).
+- Garantir at-least-once, mesmo que o cliente receba o mesmo evento duas vezes ([09:24] Diego).
 - Evitar coordenação entre plataforma e cliente para confirmar entregas ([09:25] Diego).
 - Seguir o padrão que os clientes já conhecem de outros provedores ([09:25] Diego).
 - Dar ao cliente um identificador estável para reconhecer repetições ([09:25] Diego).
@@ -29,7 +29,7 @@ A plataforma precisa declarar qual garantia de entrega oferece e dar ao cliente 
 
 ## Decisão
 
-Alternativa escolhida: **entrega at-least-once, com deduplicação pelo cliente usando o `X-Event-Id`** ([09:26] Larissa), porque nunca perde um evento ([09:24] Diego) e segue o padrão de mercado sem exigir coordenação com o cliente ([09:25] Diego).
+Alternativa escolhida: **entrega at-least-once, com deduplicação pelo cliente usando o `X-Event-Id`** ([09:26] Larissa), porque garante at-least-once ([09:24] Diego) e segue o padrão de mercado sem exigir coordenação com o cliente ([09:25] Diego).
 
 Cada evento recebe um UUID no momento em que é gravado na outbox ([09:25] Diego). Ele é único por evento ([09:25] Diego) e é enviado no header `X-Event-Id` e também dentro do payload ([09:43] Diego). O cliente deve estar preparado para receber o mesmo evento mais de uma vez e descartar as repetições por esse identificador ([09:24] Diego). O comportamento será documentado em destaque no portal do desenvolvedor ([09:26] Marcos).
 

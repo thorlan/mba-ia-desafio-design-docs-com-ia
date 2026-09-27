@@ -9,19 +9,19 @@
 
 ## 1. Resumo (TL;DR)
 
-Três clientes B2B querem ser avisados quando o status dos seus pedidos muda, em menos de 10 segundos. Propomos gravar cada mudança como evento numa outbox no MySQL, na mesma transação da mudança de status, e entregar esses eventos por um worker separado, com retentativas, assinatura HMAC e garantia at-least-once. A proposta usa só a infraestrutura e os padrões que o projeto já tem. Pedimos aos revisores que validem a abordagem e ajudem a fechar as questões em aberto da seção 5.
+Três clientes B2B querem ser avisados quando o status dos seus pedidos muda, em menos de 10 segundos. Propomos gravar cada mudança como evento numa outbox no MySQL, na mesma transação da mudança de status, e entregá-lo por um worker separado, com retentativas, assinatura HMAC e garantia at-least-once, usando só a infraestrutura e os padrões que o projeto já tem. Pedimos aos revisores que validem a abordagem e ajudem a fechar as questões da seção 5.
 
 ## 2. Contexto e problema
 
-Atlas Comercial, MaxDistribuição e Nova Cargo pediram formalmente para ser notificados quando o status dos seus pedidos muda. Hoje eles consultam a API de pedidos de tempos em tempos, o que deixa a integração "lenta e cara" para eles. A Atlas sinalizou que pode migrar para um concorrente se não tiver a funcionalidade até o fim do trimestre ([09:00] Marcos), e pediu a entrega para o fim de novembro ([09:45] Marcos). Para os clientes, qualquer entrega abaixo de 10 segundos já é "tempo real" ([09:02] Marcos). Os webhooks são só de saída: os clientes querem receber, não enviar ([09:02] Marcos, [09:03] Sofia).
+Atlas Comercial, MaxDistribuição e Nova Cargo pediram formalmente para ser notificados quando o status dos seus pedidos muda. Hoje eles consultam a API de pedidos de tempos em tempos, o que deixa a integração "lenta e cara" para eles. A Atlas sinalizou que pode migrar para um concorrente se não tiver a funcionalidade até o fim do trimestre ([09:00] Marcos), e pediu a entrega para o fim de novembro ([09:45] Marcos). Para os clientes, qualquer entrega abaixo de 10 segundos já é "tempo real" ([09:02] Marcos). Os webhooks são só de saída ([09:02] Marcos, [09:03] Sofia).
 
-O ponto de disparo natural é a mudança de status do pedido. No código, ela acontece numa única transação que valida a transição na máquina de estados, ajusta estoque, atualiza o pedido e grava o histórico de status (`src/modules/orders/order.service.ts:126`). Essa transação já é considerada pesada ([09:04] Bruno). O desafio é notificar sistemas externos, que podem estar lentos ou fora do ar, sem travar essa transação e sem perder nenhuma mudança: "Não pode ter caso de status mudar e evento não sair" ([09:40] Bruno).
+O ponto de disparo é a mudança de status do pedido, que acontece numa única transação: valida a transição na máquina de estados, ajusta estoque, atualiza o pedido e grava o histórico (`src/modules/orders/order.service.ts:126`). Essa transação já é pesada, e um cliente lento ou fora do ar não pode travá-la ([09:04] Bruno). Ao mesmo tempo, "Não pode ter caso de status mudar e evento não sair" ([09:40] Bruno).
 
 ## 3. Proposta técnica
 
 ### 3.1 Visão geral
 
-A mudança de status passa a registrar um evento dentro da própria transação. Um processo separado lê os eventos pendentes e os entrega aos endpoints cadastrados pelos clientes. Falhas são retentadas por até cerca de 15 horas. Depois disso, o evento vai para uma fila de mensagens mortas (DLQ), de onde um administrador pode reprocessá-lo.
+A mudança de status registra um evento na própria transação. Um processo separado lê os pendentes e os entrega aos endpoints dos clientes, com retentativas por quase 15 horas; depois disso, o evento vai para uma DLQ, de onde um administrador pode reprocessá-lo.
 
 ```mermaid
 flowchart LR
@@ -35,33 +35,33 @@ flowchart LR
 
 ### 3.2 Componentes e fluxo
 
-- RFC-COMP-01 **Outbox transacional no MySQL.** O evento é gravado na mesma transação da mudança de status: se ela commita o evento existe, e se sofre rollback o evento some junto ([09:06] Diego). Só entra evento se algum webhook do customer assina aquele status ([09:34] Bruno), e o payload é gravado já montado, como retrato do pedido naquele momento ([09:52] Larissa). Decisão em [ADR-001](adrs/ADR-001-outbox-transacional-no-mysql.md).
-- RFC-COMP-02 **Worker em processo separado.** Um segundo processo, com o mesmo banco e a mesma stack ([09:11] Diego), consulta a outbox a cada 2 segundos e faz as chamadas HTTP ([09:10] Larissa). Um restart da API não derruba o worker ([09:11] Diego). Decisão em [ADR-002](adrs/ADR-002-worker-em-processo-separado-com-polling.md).
-- RFC-COMP-03 **Retry com backoff e DLQ.** Uma entrega com falha é retentada 5 vezes, com intervalos de 1 minuto a 12 horas ([09:17] Larissa). Esgotadas as tentativas, o evento vai para uma DLQ em tabela própria ([09:18] Diego), e só um administrador pode devolvê-lo à outbox ([09:36] Sofia). Decisão em [ADR-003](adrs/ADR-003-retry-com-backoff-exponencial-e-dlq.md).
-- RFC-COMP-04 **Autenticação HMAC-SHA256.** Cada envio é assinado com uma secret única por endpoint ([09:22] Sofia), gerada pela plataforma ([09:31] Marcos) e rotacionável com carência de 24 horas ([09:21] Sofia). Decisão em [ADR-004](adrs/ADR-004-autenticacao-hmac-sha256-com-secret-por-endpoint.md).
-- RFC-COMP-05 **Entrega at-least-once.** Cada evento carrega um identificador único para que o cliente deduplique ([09:25] Diego). Decisão em [ADR-005](adrs/ADR-005-entrega-at-least-once-com-x-event-id.md).
-- RFC-COMP-06 **Módulo no padrão do projeto.** A configuração dos webhooks, o histórico de entregas e o reprocessamento vivem num módulo novo, com a mesma estrutura, classes de erro, logger e validação dos módulos atuais ([09:30] Larissa). Decisão em [ADR-006](adrs/ADR-006-reuso-dos-padroes-do-projeto.md).
+- RFC-COMP-01 **Outbox transacional no MySQL** ([ADR-001](adrs/ADR-001-outbox-transacional-no-mysql.md)). Se a transação commita, o evento existe; se sofre rollback, some junto ([09:06] Diego). Só entra evento se algum webhook do customer assina o status ([09:34] Bruno), e o payload é gravado já montado ([09:52] Larissa).
+- RFC-COMP-02 **Worker em processo separado** ([ADR-002](adrs/ADR-002-worker-em-processo-separado-com-polling.md)). Mesmo banco e mesma stack ([09:11] Diego), polling a cada 2 segundos ([09:10] Larissa); um restart da API não o derruba ([09:11] Diego).
+- RFC-COMP-03 **Retry com backoff e DLQ** ([ADR-003](adrs/ADR-003-retry-com-backoff-exponencial-e-dlq.md)). 5 retentativas, de 1 minuto a 12 horas ([09:17] Larissa); depois, DLQ em tabela própria ([09:18] Diego), com replay só por administrador ([09:36] Sofia).
+- RFC-COMP-04 **Autenticação HMAC-SHA256** ([ADR-004](adrs/ADR-004-autenticacao-hmac-sha256-com-secret-por-endpoint.md)). Secret única por endpoint ([09:22] Sofia), gerada pela plataforma ([09:31] Marcos) e rotacionável com carência de 24 horas ([09:21] Sofia).
+- RFC-COMP-05 **Entrega at-least-once** ([ADR-005](adrs/ADR-005-entrega-at-least-once-com-x-event-id.md)). Identificador único por evento, para o cliente deduplicar ([09:25] Diego).
+- RFC-COMP-06 **Módulo no padrão do projeto** ([ADR-006](adrs/ADR-006-reuso-dos-padroes-do-projeto.md)). Configuração, histórico e replay num módulo novo, com a estrutura, os erros, o logger e a validação atuais ([09:30] Larissa).
 
 ### 3.3 Garantias e limites
 
-| O cliente pode esperar | O que não é garantido |
-| --- | --- |
-| Toda mudança de status confirmada gera um evento, e nenhuma mudança desfeita gera | Entrega exatamente uma vez: o mesmo evento pode chegar mais de uma vez |
-| Leitura do evento em até cerca de 2 segundos após a mudança ([09:10] Larissa) | Ordem global entre pedidos: a ordem vale por pedido e enquanto houver um único worker ([09:13] Larissa) |
-| Retentativas por até cerca de 15 horas antes de desistir ([09:17] Diego) | Entrega automática depois disso: o evento na DLQ depende de ação de um administrador |
-| Assinatura verificável da origem e da integridade de cada envio ([09:19] Sofia) | Aviso proativo quando as entregas falham, que ficou para uma próxima fase ([09:37] Larissa) |
+| ID | O cliente pode esperar | O que não é garantido |
+| --- | --- | --- |
+| RFC-GAR-01 | Toda mudança confirmada para um status assinado gera evento, e mudança desfeita não gera ([09:06] Diego) | Entrega exatamente uma vez ([09:24] Diego) |
+| RFC-GAR-02 | Leitura do evento em até 2 segundos no pior caso ([09:10] Larissa) | Ordem global: só por pedido e com um único worker ([09:13] Larissa) |
+| RFC-GAR-03 | Retentativas por quase 15 horas ([09:17] Diego) | Entrega automática depois disso: a DLQ depende de um administrador ([09:18] Diego) |
+| RFC-GAR-04 | Assinatura verificável de origem e integridade ([09:19] Sofia) | Aviso proativo de falha, que ficou para uma próxima fase ([09:37] Larissa) |
 
 ## 4. Alternativas consideradas
 
 | ID | Alternativa | Levantada em | Trade-off que levou ao descarte | Análise |
 | --- | --- | --- | --- | --- |
-| RFC-ALT-01 | Disparo síncrono na mudança de status | [09:03] Larissa | Um cliente lento travaria a mudança de status de outros pedidos, e um cliente fora do ar obrigaria a desfazer uma mudança legítima ([09:04] Bruno). Descartado como "fora de questão" ([09:06] Diego). | [ADR-001](adrs/ADR-001-outbox-transacional-no-mysql.md) |
-| RFC-ALT-02 | Fila externa (Redis Streams ou similar) | [09:07] Larissa | Exigiria subir mais infraestrutura ([09:07] Larissa), o que é *overengineering* para um time pequeno ([09:07] Diego). | [ADR-001](adrs/ADR-001-outbox-transacional-no-mysql.md) |
-| RFC-ALT-03 | Trigger no banco para acordar o worker | [09:09] Bruno | O MySQL não notifica processo externo; a trigger "só executa SQL", e o desvio necessário "fica esquisito" ([09:09] Diego). | [ADR-002](adrs/ADR-002-worker-em-processo-separado-com-polling.md) |
-| RFC-ALT-04 | Worker dentro do processo da API | [09:11] Diego | Um restart da API derrubaria o worker junto ([09:11] Diego). | [ADR-002](adrs/ADR-002-worker-em-processo-separado-com-polling.md) |
-| RFC-ALT-05 | Apenas 3 tentativas | [09:16] Bruno | "Mais agressivo" ([09:16] Bruno), mas "3 é pouco": retentaria "três vezes em 30 minutos", e um cliente já ficou duas horas fora do ar em manutenção planejada ([09:16] Diego). | [ADR-003](adrs/ADR-003-retry-com-backoff-exponencial-e-dlq.md) |
-| RFC-ALT-06 | Secret global da plataforma | [09:21] Sofia | "Senão se vaza uma, vaza tudo" ([09:21] Sofia). | [ADR-004](adrs/ADR-004-autenticacao-hmac-sha256-com-secret-por-endpoint.md) |
-| RFC-ALT-07 | Exactly-once | [09:25] Diego | "Garantir exactly-once exigiria coordenação dos dois lados e fica muito mais complexo" ([09:25] Diego). | [ADR-005](adrs/ADR-005-entrega-at-least-once-com-x-event-id.md) |
+| RFC-ALT-01 | Disparo síncrono na mudança de status | [09:03] Larissa | Um cliente lento travaria a mudança de status de outros pedidos, e um cliente fora do ar obrigaria a desfazer uma mudança legítima ([09:04] Bruno); "fora de questão" ([09:06] Diego) | [ADR-001](adrs/ADR-001-outbox-transacional-no-mysql.md) |
+| RFC-ALT-02 | Fila externa (Redis Streams ou similar) | [09:07] Larissa | Exigiria subir mais infraestrutura ([09:07] Larissa); *overengineering* para um time pequeno ([09:07] Diego) | [ADR-001](adrs/ADR-001-outbox-transacional-no-mysql.md) |
+| RFC-ALT-03 | Trigger no banco para acordar o worker | [09:09] Bruno | A trigger "só executa SQL", e o desvio necessário "fica esquisito" ([09:09] Diego) | [ADR-002](adrs/ADR-002-worker-em-processo-separado-com-polling.md) |
+| RFC-ALT-04 | Worker dentro do processo da API | [09:11] Diego | Um restart da API derrubaria o worker ([09:11] Diego) | [ADR-002](adrs/ADR-002-worker-em-processo-separado-com-polling.md) |
+| RFC-ALT-05 | Apenas 3 tentativas | [09:16] Bruno | "3 é pouco": retentaria "três vezes em 30 minutos", e um cliente já ficou duas horas fora do ar ([09:16] Diego) | [ADR-003](adrs/ADR-003-retry-com-backoff-exponencial-e-dlq.md) |
+| RFC-ALT-06 | Secret global da plataforma | [09:21] Sofia | "Senão se vaza uma, vaza tudo" ([09:21] Sofia) | [ADR-004](adrs/ADR-004-autenticacao-hmac-sha256-com-secret-por-endpoint.md) |
+| RFC-ALT-07 | Exactly-once | [09:25] Diego | "Garantir exactly-once exigiria coordenação dos dois lados e fica muito mais complexo" ([09:25] Diego) | [ADR-005](adrs/ADR-005-entrega-at-least-once-com-x-event-id.md) |
 
 ## 5. Questões em aberto
 
@@ -69,66 +69,65 @@ flowchart LR
 
 | ID | Questão | Origem | Situação combinada |
 | --- | --- | --- | --- |
-| RFC-QA-01 | Rate limiting de envio: um cliente com 50 pedidos mudando em um minuto recebe 50 chamadas | [09:38] Diego | Fica como "observar e decidir depois" ([09:39] Larissa); implementar "se virar problema" ([09:39] Diego) |
-| RFC-QA-02 | Escalar para vários workers, perdendo a ordem por pedido | [09:13] Bruno | É "problema do futuro, não agora", com particionamento por pedido ou lock como caminhos ([09:13] Diego) |
-| RFC-QA-03 | Endurecer a autorização do cadastro de webhooks, hoje aberto a qualquer papel autenticado | [09:36] Marcos | "Por enquanto sim. Mais pra frente a gente pode endurecer." ([09:37] Sofia) |
-| RFC-QA-04 | Avisar o cliente por e-mail quando as entregas falham seguidamente | [09:37] Marcos | Fora desta fase: "Talvez próxima fase, depois que a gente medir o impacto" ([09:37] Larissa) |
-| RFC-QA-05 | Arquivar os eventos já entregues | [09:08] Diego | Cerca de 30 dias, mas "fora do escopo dessa feature" ([09:08] Diego) |
+| RFC-QA-01 | Rate limiting: 50 pedidos mudando em um minuto viram 50 chamadas | [09:38] Diego | Fica como "observar e decidir depois" ([09:39] Larissa) |
+| RFC-QA-02 | Escalar para vários workers, perdendo a ordem por pedido | [09:13] Bruno | É "problema do futuro, não agora" ([09:13] Diego) |
+| RFC-QA-03 | Endurecer a autorização do cadastro, hoje aberto a qualquer papel autenticado | [09:36] Marcos | "Mais pra frente a gente pode endurecer." ([09:37] Sofia) |
+| RFC-QA-04 | Avisar o cliente por e-mail em falhas seguidas | [09:37] Marcos | "Talvez próxima fase, depois que a gente medir o impacto" ([09:37] Larissa) |
+| RFC-QA-05 | Arquivar os eventos já entregues | [09:08] Diego | "fora do escopo dessa feature" ([09:08] Diego) |
 
 ### 5.2 Identificadas na análise das ADRs
 
-Estas lacunas não foram discutidas na reunião. Surgiram ao formalizar as decisões e precisam de resposta antes ou durante a implementação.
+A reunião não discutiu estas lacunas. A coluna Tema na reunião indica a fala em que o assunto aparece.
 
-| ID | Questão | Origem |
-| --- | --- | --- |
-| RFC-QB-01 | O que acontece com os eventos já gravados quando o webhook é desativado ou removido | [ADR-001](adrs/ADR-001-outbox-transacional-no-mysql.md) |
-| RFC-QB-02 | Qual o teto de latência aceitável para o acréscimo na transação de mudança de status | [ADR-001](adrs/ADR-001-outbox-transacional-no-mysql.md) |
-| RFC-QB-03 | Como recuperar eventos presos em processamento quando o worker cai | [ADR-002](adrs/ADR-002-worker-em-processo-separado-com-polling.md) |
-| RFC-QB-04 | Como monitorar que o worker está vivo | [ADR-002](adrs/ADR-002-worker-em-processo-separado-com-polling.md) |
-| RFC-QB-05 | Como fica a ordem por pedido quando um evento anterior está em retentativa | [ADR-002](adrs/ADR-002-worker-em-processo-separado-com-polling.md) |
-| RFC-QB-06 | Quais respostas HTTP, além da falta de resposta, contam como falha | [ADR-003](adrs/ADR-003-retry-com-backoff-exponencial-e-dlq.md) |
-| RFC-QB-07 | Se a auditoria do reprocessamento fica só em log ou também persistida | [ADR-003](adrs/ADR-003-retry-com-backoff-exponencial-e-dlq.md) |
-| RFC-QB-08 | Se o reprocessamento mantém o identificador original do evento | [ADR-003](adrs/ADR-003-retry-com-backoff-exponencial-e-dlq.md), [ADR-005](adrs/ADR-005-entrega-at-least-once-com-x-event-id.md) |
-| RFC-QB-09 | Como assinar durante as 24 horas em que duas secrets são válidas | [ADR-004](adrs/ADR-004-autenticacao-hmac-sha256-com-secret-por-endpoint.md) |
-| RFC-QB-10 | O timestamp de envio vai em header, mas fica fora da assinatura | [ADR-004](adrs/ADR-004-autenticacao-hmac-sha256-com-secret-por-endpoint.md) |
-| RFC-QB-11 | Como a secret é protegida em repouso | [ADR-004](adrs/ADR-004-autenticacao-hmac-sha256-com-secret-por-endpoint.md) |
-| RFC-QB-12 | Se um evento enviado a dois webhooks do mesmo customer usa o mesmo identificador | [ADR-005](adrs/ADR-005-entrega-at-least-once-com-x-event-id.md) |
-| RFC-QB-13 | A validação de URL no schema gera o erro genérico de validação, e não o código próprio do módulo | [ADR-006](adrs/ADR-006-reuso-dos-padroes-do-projeto.md) |
-| RFC-QB-14 | A criação do pedido grava o status inicial fora da mudança de status (`src/modules/orders/order.service.ts:58`); não está definido se isso gera evento | Mapeamento do código |
+| ID | Questão | Tema na reunião | ADR |
+| --- | --- | --- | --- |
+| RFC-QB-01 | Destino dos eventos de um webhook desativado ou removido | [09:21] Bruno | 001 |
+| RFC-QB-02 | Teto de latência aceitável para o acréscimo na transação | [09:04] Bruno | 001 |
+| RFC-QB-03 | Recuperação de eventos presos quando o worker cai | [09:11] Diego | 002 |
+| RFC-QB-04 | Monitoramento de que o worker está vivo | [09:11] Diego | 002 |
+| RFC-QB-05 | Ordem por pedido com um evento anterior em retentativa | [09:13] Larissa | 002 |
+| RFC-QB-06 | Quais respostas HTTP, além do timeout, contam como falha | [09:42] Diego | 003 |
+| RFC-QB-07 | Auditoria do replay só em log ou também persistida | [09:36] Sofia | 003 |
+| RFC-QB-08 | Se o replay mantém o identificador original | [09:18] Diego | 003, 005 |
+| RFC-QB-09 | Como assinar nas 24 horas com duas secrets válidas | [09:21] Sofia | 004 |
+| RFC-QB-10 | Timestamp de envio fora da assinatura | [09:44] Diego | 004 |
+| RFC-QB-11 | Proteção da secret em repouso | [09:21] Bruno | 004 |
+| RFC-QB-12 | Mesmo identificador para dois webhooks do mesmo customer | [09:25] Diego | 005 |
+| RFC-QB-13 | Validação de URL no schema gera erro genérico, não o código do módulo | [09:23] Sofia | 006 |
+| RFC-QB-14 | Criação do pedido grava o status inicial fora da mudança de status (`src/modules/orders/order.service.ts:58`) | Não discutido | Código |
 
 ## 6. Impacto e riscos
 
 ### 6.1 Impacto no sistema existente
 
-- **Pedidos.** A transação de mudança de status passa a consultar as assinaturas do customer e a gravar o evento ([09:40] Bruno). É a única alteração num módulo existente.
-- **Processos.** O sistema, hoje com um único processo HTTP (`src/server.ts:6`), ganha um segundo processo para implantar e operar ([09:11] Diego).
-- **Banco.** Entram as estruturas da outbox, da DLQ, da configuração de webhooks e do histórico de entregas, todas no MySQL atual ([09:07] Diego, [09:34] Marcos).
-- **API.** Entra um módulo novo, composto como os demais (`src/app.ts:26`), sem mudar o error middleware nem o logger ([09:29] Bruno).
+- RFC-IMP-01 **Pedidos:** a transação de mudança de status passa a inserir o evento na outbox ([09:40] Bruno), a única alteração num módulo existente.
+- RFC-IMP-02 **Processos:** o sistema, hoje com um único processo HTTP (`src/server.ts:6`), ganha um segundo processo ([09:11] Diego).
+- RFC-IMP-03 **Banco:** outbox, DLQ, configuração e histórico de entregas no MySQL atual ([09:07] Diego, [09:34] Marcos).
+- RFC-IMP-04 **API:** um módulo novo, composto como os demais (`src/app.ts:26`), sem mudar o error middleware nem o logger ([09:29] Bruno).
 
 ### 6.2 Riscos
 
 | ID | Risco | Impacto | Mitigação | Fonte |
 | --- | --- | --- | --- | --- |
-| RFC-RISCO-01 | A transação de mudança de status, já pesada, fica mais lenta | Latência maior em toda mudança de status | Só grava evento quando algum webhook assina o status ([09:34] Bruno); o teto aceitável está em aberto (5.2) | [09:04] Bruno, [ADR-001](adrs/ADR-001-outbox-transacional-no-mysql.md) |
-| RFC-RISCO-02 | Um cliente não deduplica os eventos | O mesmo pedido é processado duas vezes do lado dele | Documentação em destaque no portal do desenvolvedor ([09:26] Marcos) | [09:25] Sofia |
-| RFC-RISCO-03 | Uma secret vaza | Terceiros forjam envios para aquele endpoint | Secret por endpoint, rotação com carência ([09:21] Sofia) e revisão de segurança antes do deploy ([09:46] Sofia); o logger atual não mascara secrets (`src/shared/logger/index.ts:4`) | [09:22] Diego |
-| RFC-RISCO-04 | O modelo de autorização é frouxo: qualquer usuário autenticado gerencia webhooks de qualquer customer, e o registro público aceita o papel de administrador | Acesso indevido à configuração e ao reprocessamento | Reprocessamento restrito a administradores ([09:36] Larissa); o tratamento detalhado fica no FDD e no PRD | [09:37] Sofia, `src/modules/auth/auth.schemas.ts:7` |
-| RFC-RISCO-05 | O prazo pedido pela Atlas não é cumprido | Risco de perder o cliente | Escopo enxuto: e-mail, painel e rate limiting fora desta fase ([09:48] Larissa) | [09:00] Marcos, [09:45] Marcos |
+| RFC-RISCO-01 | A transação, já pesada, fica mais lenta | Latência maior em toda mudança de status | Só grava evento quando algum webhook assina o status ([09:34] Bruno) | [09:04] Bruno |
+| RFC-RISCO-02 | Um cliente não deduplica os eventos | O mesmo evento processado duas vezes do lado dele | Documentação em destaque no portal ([09:26] Marcos) | [09:25] Sofia |
+| RFC-RISCO-03 | Uma secret vaza | Terceiros forjam envios para aquele endpoint | Secret por endpoint, rotação com carência ([09:21] Sofia) e revisão de segurança ([09:46] Sofia) | [09:22] Diego |
+| RFC-RISCO-04 | Autorização frouxa: qualquer usuário autenticado gerencia webhooks de qualquer customer, e o registro público aceita o papel de administrador | Acesso indevido à configuração e ao replay | Replay restrito a administradores ([09:36] Larissa); detalhe no FDD e no PRD | [09:37] Sofia, `src/modules/auth/auth.schemas.ts:7` |
+| RFC-RISCO-05 | O prazo da Atlas não é cumprido | Risco de perder o cliente | Confirmação do prazo com a Atlas ([09:47] Marcos) | [09:00] Marcos |
 
 ### 6.3 Esforço e dependências
 
-A estimativa é de três sprints, com a revisão de segurança incluída no fim ([09:47] Larissa). A divisão é de uma sprint para a modelagem da outbox e da DLQ, uma para o worker e o retry, meia para a configuração e o histórico de entregas e meia para a integração com pedidos e os testes de ponta a ponta ([09:46] Larissa).
+A estimativa é de três sprints, com a revisão de segurança incluída no fim ([09:47] Larissa): uma sprint para outbox e DLQ, uma para worker e retry, meia para configuração e histórico e meia para a integração com pedidos e os testes ponta a ponta ([09:46] Larissa).
 
-A entrega depende de:
-- Dois dias úteis de revisão de segurança da Sofia antes do deploy ([09:46] Sofia).
-- Documentação no portal do desenvolvedor, a cargo do Marcos ([09:40] Marcos).
-- Confirmação do prazo com a Atlas, também a cargo do Marcos ([09:47] Marcos).
+- RFC-DEP-01 Dois dias úteis de revisão de segurança da Sofia antes do deploy ([09:46] Sofia).
+- RFC-DEP-02 Documentação no portal do desenvolvedor, com o Marcos ([09:40] Marcos).
+- RFC-DEP-03 Confirmação do prazo com a Atlas, com o Marcos ([09:47] Marcos).
 
 ## 7. Decisões relacionadas
 
-- [ADR-001: Outbox transacional no MySQL existente](adrs/ADR-001-outbox-transacional-no-mysql.md): o evento nasce na mesma transação da mudança de status.
-- [ADR-002: Worker em processo separado com polling](adrs/ADR-002-worker-em-processo-separado-com-polling.md): um processo próprio entrega os eventos, consultando a outbox a cada 2 segundos.
-- [ADR-003: Retry com backoff exponencial e DLQ em tabela separada](adrs/ADR-003-retry-com-backoff-exponencial-e-dlq.md): 5 retentativas ao longo de cerca de 15 horas, depois DLQ com reprocessamento manual.
-- [ADR-004: Autenticação HMAC-SHA256 com secret por endpoint e rotação](adrs/ADR-004-autenticacao-hmac-sha256-com-secret-por-endpoint.md): cada envio é assinado com uma secret exclusiva do endpoint.
-- [ADR-005: Entrega at-least-once com X-Event-Id para deduplicação](adrs/ADR-005-entrega-at-least-once-com-x-event-id.md): o cliente pode receber repetições e as descarta pelo identificador do evento.
-- [ADR-006: Reuso dos padrões existentes do projeto](adrs/ADR-006-reuso-dos-padroes-do-projeto.md): o módulo segue a estrutura, os erros, o logger e a validação que o projeto já usa.
+- [ADR-001: Outbox transacional no MySQL existente](adrs/ADR-001-outbox-transacional-no-mysql.md)
+- [ADR-002: Worker em processo separado com polling](adrs/ADR-002-worker-em-processo-separado-com-polling.md)
+- [ADR-003: Retry com backoff exponencial e DLQ em tabela separada](adrs/ADR-003-retry-com-backoff-exponencial-e-dlq.md)
+- [ADR-004: Autenticação HMAC-SHA256 com secret por endpoint e rotação](adrs/ADR-004-autenticacao-hmac-sha256-com-secret-por-endpoint.md)
+- [ADR-005: Entrega at-least-once com X-Event-Id para deduplicação](adrs/ADR-005-entrega-at-least-once-com-x-event-id.md)
+- [ADR-006: Reuso dos padrões existentes do projeto](adrs/ADR-006-reuso-dos-padroes-do-projeto.md)
