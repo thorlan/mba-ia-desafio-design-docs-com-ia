@@ -71,3 +71,13 @@ Cada entrada registra o que a IA produziu, o que a revisão encontrou e o que mu
   - Os 6 dossiês formalizados foram arquivados em `adrs/potential-adrs/done/WEBHOOKS/`, com os links do índice e do dossiê *consider* ajustados.
 - **Desvios do template declarados** no prompt 03: tamanho abaixo de 100 linhas, linha da transcrição fora do limite de 5 referências, códigos de erro na ADR de reuso e ausência dos níveis `generated/` e `needs-input/`.
 - **Estrutura:** o índice `docs/adrs/README.md` foi para `process/adrs/README.md`, porque o critério do enunciado pede que `docs/adrs/` contenha só arquivos no formato `ADR-NNN-*.md`.
+
+## Iteração 4: RFC
+
+- **Prompt:** o curso não tem template de RFC. O prompt `prompts/05-rfc-entrevista-adaptado.md` segue a estrutura do prompt de entrevista do PRD do curso e foi aprovado pelo usuário no PR antes de gerar o documento.
+- **Entrevista:** as respostas vieram das ADRs, da transcrição e do índice de Potential ADRs. A única lacuna levada ao usuário foi a autoria. Ele escolheu Larissa (Tech Lead) como autora, e os outros quatro participantes ficaram como revisores.
+- **Questões em aberto separadas por origem:**
+  - 5.1 traz os 5 pontos que a reunião adiou ou deixou sem decisão: rate limiting, vários workers, autorização do cadastro, e-mail de falha e arquivamento.
+  - 5.2 traz as lacunas encontradas na análise, marcadas como não discutidas na reunião.
+- **Lacuna nova:** o mapeamento do código já apontava que a criação do pedido grava o status inicial fora da mudança de status (discrepância 7), mas ela não estava na lista de questões para o RFC. Foi acrescentada ao índice e ao RFC (agora são 14 na seção 5.2).
+- **Correções na verificação automática:** três citações tinham caixa ou aspas diferentes do original ("Observar", "Problema do futuro" e aspas simples dentro de uma citação). Foram ajustadas para bater literalmente com a transcrição.
