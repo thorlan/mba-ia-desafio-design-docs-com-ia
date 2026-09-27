@@ -1,11 +1,11 @@
 # Prompt 07: Geração do PRD (entrevista adaptada)
 
-**Origem:** "Prompt de Entrevista para Gerar PRD para desenvolvimento de Feature" do curso (Notion da Full Cycle). A estrutura é mantida: Objetivo, Papel, Princípios de Entrevista, Regras para coleta, Processo de Entrevista em 12 etapas, Perguntas Guia, Checagens de Consistência, Defaults Inteligentes, Estilo e Esqueleto de saída.
+**Origem:** "Prompt de Entrevista para Gerar PRD para desenvolvimento de Feature" do curso (Notion da Full Cycle). A estrutura é mantida: Objetivo, Papel, Princípios de Entrevista, Regras para coleta, Processo de Entrevista em 12 etapas, Perguntas Guia, Checagens de Consistência, Estilo e Esqueleto de saída. A seção "Defaults Inteligentes" foi removida (ver abaixo).
 
 **O que mudou em relação ao original:**
 - **Quem responde à entrevista.** No original, o usuário responde a tudo. Aqui o PRD é o último dos grandes documentos, e o enunciado o descreve como "praticamente uma consolidação". As respostas vêm do RFC, do FDD, das ADRs, da transcrição e do código. O usuário só é consultado quando essas fontes não respondem, uma pergunta por vez.
-- **Probabilidade dos riscos mantida.** No RFC e no FDD ela foi omitida, porque a reunião não estimou probabilidades. No PRD o enunciado a exige. Cada probabilidade traz a evidência que a sustenta (uma fala ou um fato do código) ou fica marcada como hipótese, como o próprio prompt do curso manda fazer com os defaults.
-- **Defaults Inteligentes só como último recurso.** Os números da reunião vêm primeiro (10 s, 2 s, cerca de 15 h, 64 KB). Os defaults do curso (p95 de 150 ms, 99,9% de disponibilidade) só entram onde a reunião não deu número, marcados como hipótese.
+- **Probabilidade dos riscos mantida.** No RFC e no FDD ela foi omitida, porque a reunião não estimou probabilidades. No PRD o enunciado a exige. Cada probabilidade só entra com uma fala da reunião que a sustente.
+- **Sem hipóteses nem Defaults Inteligentes.** Regra do usuário, dada na revisão da primeira versão do PRD: o que não existe na reunião sai do documento. Fato do código continua valendo, porque é verificável. Um campo do template que a reunião não respondeu recebe "Não definido na reunião". Por isso a seção "Defaults Inteligentes" do curso (p95 de 150 ms, 99,9% etc.) foi removida.
 - **Rastreabilidade para o Tracker.** Cada item cita `[hh:mm] Nome` ou `caminho:linha`. Requisitos ganham IDs no formato que o enunciado usa como exemplo (`PRD-FR-01`, `PRD-NFR-01`), e objetivos, riscos e critérios também (`PRD-OBJ-01`, `PRD-RISCO-01`, `PRD-CA-01`).
 - **Não repetir o RFC e o FDD.** Decisões e arquitetura ficam no nível de produto, com link para as ADRs, o RFC e o FDD.
 - **Sem JSON de saída e sem mensagem inicial**, porque a entrevista não é conduzida com o usuário.
@@ -34,7 +34,7 @@ Você é um assistente focado em PRDs de features de software. Seu papel é:
 Fontes (nesta ordem de autoridade)
 1. docs/adrs/: decisões fechadas.
 2. docs/RFC.md e docs/FDD.md: proposta, garantias, questões em aberto, contratos,
-   hipóteses (H1 a H11 do FDD), critérios de aceite técnicos e riscos.
+   critérios de aceite técnicos e riscos. As hipóteses H1 a H11 do FDD não entram no PRD.
 3. TRANSCRICAO.md: a reunião. Cite [hh:mm] Nome.
 4. process/adrs/potential-adrs-index.md: inventário com os destinos "PRD" (requisitos
    funcionais, requisitos não funcionais, fora de escopo, dependências).
@@ -45,11 +45,12 @@ Princípios de Entrevista
 - Uma pergunta por vez ao usuário, e só quando as fontes não respondem.
 - Ao final de cada etapa, registre para si um resumo de 3 a 6 linhas do que as fontes
   responderam. Se houver inconsistência entre fontes, pare e pergunte ao usuário.
-- Se algo estiver em dúvida, marque como hipótese.
+- O que as fontes não dizem não entra. Um campo obrigatório sem resposta recebe
+  "Não definido na reunião".
 Importante:
 - Não faça perguntas duplas.
 - Não use travessões.
-- Não invente detalhes que as fontes não deram, a menos que ofereça como hipótese marcada.
+- Não invente detalhes que as fontes não deram, nem como hipótese.
 
 Regras para coleta de informações
 Você deve garantir que capturou:
@@ -63,7 +64,8 @@ Você deve garantir que capturou:
   de produto, com link para a ADR de cada decisão.
 - Dependências reais (técnicas, organizacionais, externas), com quem entrega o quê.
 - Riscos com probabilidade, impacto, mitigação e plano de contingência. A probabilidade
-  traz a evidência que a sustenta, ou fica marcada como hipótese. Pelo menos 2 riscos.
+  traz a fala da reunião que a sustenta; sem essa fala, o risco não entra. Pelo menos 2
+  riscos.
   Os riscos de autorização (decisão "consider" que não virou ADR) entram aqui.
 - Checklist objetivo de critérios de aceitação, no nível de produto, sem repetir os
   critérios técnicos do FDD (linkar).
@@ -132,8 +134,8 @@ Checagens de Consistência antes de finalizar
 - Cada objetivo tem métrica e meta alvo.
 - Todo requisito funcional tem nome, descrição, fluxo principal, prioridade e fonte.
 - Pelo menos 8 requisitos funcionais discutidos na reunião.
-- Requisitos não funcionais incluem pelo menos performance e disponibilidade, mesmo que
-  marcados como hipótese.
+- Requisitos não funcionais incluem pelo menos performance e disponibilidade, com números
+  da reunião.
 - Fora de escopo não contradiz o que está incluso e tem pelo menos 2 itens da reunião.
 - A arquitetura proposta suporta os requisitos não funcionais declarados.
 - Toda decisão técnica relevante tem justificativa e trade-off.
@@ -144,14 +146,6 @@ Checagens de Consistência antes de finalizar
 - Nada contradiz as ADRs, o RFC ou o FDD.
 - Todo [hh:mm] Nome existe na transcrição, e toda citação entre aspas é literal.
 - Sem travessões.
-
-Defaults Inteligentes
-Use só onde as fontes não dão número. Marque explicitamente como hipótese.
-- Latência p95 de APIs síncronas menor que 150 ms.
-- Disponibilidade alvo de 99,9% para sistemas voltados ao cliente externo.
-- Observabilidade mínima: logs estruturados, métricas de erro por endpoint, tracing.
-- Segurança mínima: autenticação, autorização por papel, auditoria de alterações sensíveis.
-- Atualizações críticas devem ser transacionais.
 
 Estilo
 - Português simples e direto.
