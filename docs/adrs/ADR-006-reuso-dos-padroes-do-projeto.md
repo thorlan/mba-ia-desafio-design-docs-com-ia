@@ -53,7 +53,7 @@ A integração com pedidos é feita por uma função que recebe a transação co
 **Positivas.** O módulo novo fala a mesma língua do resto da API: quem conhece um módulo conhece o de webhooks. Os erros do módulo chegam ao cliente no mesmo envelope, sem mudar o error middleware. E a integração com pedidos se limita a uma chamada dentro da transação existente.
 
 **Negativas.** As limitações herdadas aparecem na implementação:
-- Algumas classes de erro existentes fixam o código (por exemplo, a de recurso não encontrado sempre responde `NOT_FOUND`). Só a classe base e as classes HTTP de conflito e de entidade não processável aceitam código próprio, e é delas que derivam as classes de domínio. Um código como `WEBHOOK_NOT_FOUND` não sai da classe de recurso não encontrado atual.
+- Algumas classes de erro existentes fixam o código (por exemplo, a de recurso não encontrado sempre responde `NOT_FOUND`). Só a classe base e as classes HTTP de requisição inválida, conflito e entidade não processável aceitam código próprio, e é dessas duas últimas que derivam as classes de domínio. Um código como `WEBHOOK_NOT_FOUND` não sai da classe de recurso não encontrado atual.
 - O middleware de validação converte todo erro do Zod em `VALIDATION_ERROR`, então uma regra validada só no schema não produz código `WEBHOOK_`. Isso conflita com validar o https no schema ([09:23] Sofia) e ter o código `WEBHOOK_INVALID_URL` ([09:28] Bruno), e fica como questão em aberto no RFC.
 - O error middleware atende apenas requisições HTTP e não cobre os erros do worker.
 - Os logs do worker saem com o mesmo nome de serviço da API.
@@ -63,7 +63,7 @@ A integração com pedidos é feita por uma função que recebe a transação co
 ## Referências
 
 - `src/shared/errors/app-error.ts:3` (classe base dos erros com código)
-- `src/shared/errors/http-errors.ts:27` (classe de recurso não encontrado com código fixo; as linhas 33 e 39 aceitam código customizado e as classes de domínio, nas linhas 45 e 55, derivam delas)
+- `src/shared/errors/http-errors.ts:27` (classe de recurso não encontrado com código fixo; as linhas 3, 33 e 39 aceitam código customizado e as classes de domínio, nas linhas 45 e 55, derivam das duas últimas)
 - `src/middlewares/error.middleware.ts:14` (error middleware centralizado)
 - `src/middlewares/validate.middleware.ts:31` (erros do Zod convertidos em `VALIDATION_ERROR`)
 - `src/app.ts:26` (composição manual dos módulos; o serviço de pedidos é criado na linha 43)
