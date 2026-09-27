@@ -20,11 +20,11 @@ O ponto de disparo é o método de mudança de status do serviço de pedidos, qu
 - Endpoint do cliente, fora da infraestrutura da plataforma, que valida a origem e a integridade dos envios ([09:19] Sofia).
 
 **Restrições**
-- Nada novo: reuso de `AppError`, Pino, error middleware, padrão de módulos, schemas Zod e códigos de erro ([09:29] Bruno, [09:30] Larissa).
-- Mesmo banco e mesma stack; o worker abre um `PrismaClient` próprio, com o mesmo `DATABASE_URL` ([09:11] Diego, [09:30] Bruno).
-- Um único worker; a ordem só vale por `order_id` e enquanto for single-worker ([09:13] Larissa).
-- URL do webhook obrigatoriamente `https` ([09:23] Sofia).
-- Payload de no máximo 64 KB, com erro se ultrapassar ([09:24] Larissa).
+- FDD-REST-01: Nada novo: reuso de `AppError`, Pino, error middleware, padrão de módulos, schemas Zod e códigos de erro ([09:29] Bruno, [09:30] Larissa).
+- FDD-REST-02: Mesmo banco e mesma stack; o worker abre um `PrismaClient` próprio, com o mesmo `DATABASE_URL` ([09:11] Diego, [09:30] Bruno).
+- FDD-REST-03: Um único worker; a ordem só vale por `order_id` e enquanto for single-worker ([09:13] Larissa).
+- FDD-REST-04: URL do webhook obrigatoriamente `https` ([09:23] Sofia).
+- FDD-REST-05: Payload de no máximo 64 KB, com erro se ultrapassar ([09:24] Larissa).
 
 **Não definido na reunião**
 
@@ -40,13 +40,13 @@ Os pontos abaixo afetam a implementação e não foram definidos na reunião. Es
 
 ## 2. Objetivos técnicos
 
-- **Atomicidade:** se a transação principal commitou, o evento foi registrado; se deu rollback, o evento some junto ([09:06] Diego). Se a inserção na outbox falhar, a mudança de status sofre rollback ([09:40] Bruno).
-- **Latência:** o worker lê a outbox a cada 2 s; a latência é de 2 s no pior caso ([09:10] Larissa), dentro da meta de 10 s ([09:02] Marcos).
-- **Resiliência:** 5 retentativas com backoff de 1 min, 5 min, 30 min, 2 h e 12 h ([09:17] Larissa), quase 15 h entre a primeira falha e a última tentativa ([09:17] Diego).
-- **Autenticidade:** HMAC-SHA256 sobre o corpo, com secret por endpoint ([09:22] Sofia).
-- **Deduplicação:** UUID gerado quando o evento entra na outbox, único por evento, enviado em `X-Event-Id` ([09:25] Diego) e no payload ([09:43] Diego).
-- **Ordem:** com um único worker, o processamento segue a ordem de `created_at` da outbox ([09:12] Diego).
-- **Consistência:** erros com o prefixo `WEBHOOK_` ([09:29] Larissa), no envelope do error middleware existente (`src/middlewares/error.middleware.ts:14-23`).
+- FDD-OBJ-01 **Atomicidade:** se a transação principal commitou, o evento foi registrado; se deu rollback, o evento some junto ([09:06] Diego). Se a inserção na outbox falhar, a mudança de status sofre rollback ([09:40] Bruno).
+- FDD-OBJ-02 **Latência:** o worker lê a outbox a cada 2 s; a latência é de 2 s no pior caso ([09:10] Larissa), dentro da meta de 10 s ([09:02] Marcos).
+- FDD-OBJ-03 **Resiliência:** 5 retentativas com backoff de 1 min, 5 min, 30 min, 2 h e 12 h ([09:17] Larissa), quase 15 h entre a primeira falha e a última tentativa ([09:17] Diego).
+- FDD-OBJ-04 **Autenticidade:** HMAC-SHA256 sobre o corpo, com secret por endpoint ([09:22] Sofia).
+- FDD-OBJ-05 **Deduplicação:** UUID gerado quando o evento entra na outbox, único por evento, enviado em `X-Event-Id` ([09:25] Diego) e no payload ([09:43] Diego).
+- FDD-OBJ-06 **Ordem:** com um único worker, o processamento segue a ordem de `created_at` da outbox ([09:12] Diego).
+- FDD-OBJ-07 **Consistência:** erros com o prefixo `WEBHOOK_` ([09:29] Larissa), no envelope do error middleware existente (`src/middlewares/error.middleware.ts:14-23`).
 
 ## 3. Escopo e exclusões
 
@@ -135,16 +135,16 @@ Como a outbox registra o número de tentativas e o horário da próxima: não de
 
 **Parâmetros e defaults**
 
-| Parâmetro | Valor | Fonte |
-| --- | --- | --- |
-| Intervalo de polling | 2 s | [09:10] Larissa |
-| Tamanho do lote | "batch pequeno"; o número não foi definido na reunião | [09:08] Diego |
-| Timeout da chamada | 10 s | [09:42] Diego |
-| Retentativas e intervalos | 5: 1 min, 5 min, 30 min, 2 h, 12 h | [09:17] Larissa |
-| Tamanho máximo do payload | 64 KB | [09:24] Larissa |
-| Carência da secret antiga | 24 h | [09:21] Sofia |
-| Tipo do evento | `order.status_changed` | [09:43] Diego |
-| Itens do histórico | últimos 100 | [09:34] Marcos |
+| ID | Parâmetro | Valor | Fonte |
+| --- | --- | --- | --- |
+| FDD-PARAM-01 | Intervalo de polling | 2 s | [09:10] Larissa |
+| FDD-PARAM-02 | Tamanho do lote | "batch pequeno"; o número não foi definido na reunião | [09:08] Diego |
+| FDD-PARAM-03 | Timeout da chamada | 10 s | [09:42] Diego |
+| FDD-PARAM-04 | Retentativas e intervalos | 5: 1 min, 5 min, 30 min, 2 h, 12 h | [09:17] Larissa |
+| FDD-PARAM-05 | Tamanho máximo do payload | 64 KB | [09:24] Larissa |
+| FDD-PARAM-06 | Carência da secret antiga | 24 h | [09:21] Sofia |
+| FDD-PARAM-07 | Tipo do evento | `order.status_changed` | [09:43] Diego |
+| FDD-PARAM-08 | Itens do histórico | últimos 100 | [09:34] Marcos |
 
 ## 5. Contratos públicos (assinaturas, endpoints, headers, exemplos)
 
@@ -513,42 +513,42 @@ Os testes seguem o padrão atual, com Vitest e Supertest contra a API (`tests/or
 
 ## 11. Integração com o sistema existente
 
-### `src/modules/orders/order.service.ts`
+### FDD-INT-01: `src/modules/orders/order.service.ts`
 - O que existe hoje: a mudança de status numa transação (linhas 126-178), com a gravação do histórico nas linhas 159-167 e o tipo do client transacional na linha 24.
 - O que muda: "a alteração crítica é dentro do service de orders, no método changeStatus": a inserção na `webhook_outbox` dentro da mesma transação, com rollback se falhar ([09:40] Bruno), por meio de `publishWebhookEvent(tx, order, fromStatus, toStatus)`, chamada pelo serviço ([09:41] Bruno). Como a função chega ao serviço: não definido na reunião.
 
-### `src/app.ts` e `src/routes/index.ts`
+### FDD-INT-02: `src/app.ts` e `src/routes/index.ts`
 - O que existe hoje: composição manual dos módulos (`src/app.ts:26-53`), rotas sob `/api/v1` (`src/app.ts:67`) e a montagem dos routers por módulo (`src/routes/index.ts:21-31`).
 - O que muda: o módulo `src/modules/webhooks` entra com controller, service, repository, routes e schemas, como os demais ([09:27] Bruno), com as rotas `/webhooks` ([09:34] Marcos) e `/admin/webhooks/dead-letter/:id/replay` ([09:35] Diego).
 
-### `src/server.ts` e o novo `src/worker.ts`
+### FDD-INT-03: `src/server.ts` e o novo `src/worker.ts`
 - O que existe hoje: o único entry point (`src/server.ts:6`), com desligamento gracioso (`src/server.ts:13-21`).
 - O que muda: "Tipo o que a gente já tem em src/server.ts, criar um src/worker.ts" ([09:11] Larissa), com a lógica de processamento dentro do módulo, em `webhook.worker.ts` ou `webhook.processor.ts` ([09:28] Bruno).
 
-### `package.json`
+### FDD-INT-04: `package.json`
 - O que existe hoje: scripts que apontam só para o servidor (`package.json:10-21`).
 - O que muda: um script "npm run worker" ([09:11] Larissa).
 
-### `src/config/database.ts`
+### FDD-INT-05: `src/config/database.ts`
 - O que existe hoje: a fábrica do `PrismaClient` (`src/config/database.ts:4`).
 - O que é reutilizado: o worker cria uma instância nova, "porque é outro processo Node", com a mesma `DATABASE_URL` ([09:30] Bruno).
 
-### `src/shared/errors/app-error.ts` e `src/shared/errors/http-errors.ts`
+### FDD-INT-06: `src/shared/errors/app-error.ts` e `src/shared/errors/http-errors.ts`
 - O que existe hoje: a classe base `AppError` (`app-error.ts:3`), classes que aceitam código (`http-errors.ts:3`, `:33`, `:39`) e `NotFoundError`, com código fixo (`http-errors.ts:27`).
 - O que é reutilizado: "Tem classe AppError, classes específicas tipo InsufficientStockError [...] Quero seguir igual pra webhook" ([09:28] Bruno).
 
-### `src/middlewares/error.middleware.ts`
+### FDD-INT-07: `src/middlewares/error.middleware.ts`
 - O que existe hoje: o tratamento centralizado de `AppError`, Zod e Prisma (`error.middleware.ts:14-54`).
 - O que é reutilizado: sem mudança ([09:29] Bruno).
 
-### `src/middlewares/auth.middleware.ts` e `src/modules/users/user.routes.ts`
+### FDD-INT-08: `src/middlewares/auth.middleware.ts` e `src/modules/users/user.routes.ts`
 - O que existe hoje: `authenticate` (`auth.middleware.ts:27`) e `requireRole` (`auth.middleware.ts:49`), usado hoje com `ADMIN` na rota de usuários (`user.routes.ts:15`).
 - O que é reutilizado: "role ADMIN obrigatório no replay e a gente reaproveita o requireRole que já existe" ([09:36] Larissa).
 
-### `src/shared/logger/index.ts`
+### FDD-INT-09: `src/shared/logger/index.ts`
 - O que existe hoje: o logger Pino (`src/shared/logger/index.ts:13-30`), com a lista de campos mascarados nas linhas 4-11.
 - O que é reutilizado: o logger, sem nada novo ([09:29] Bruno), para o log de quem fez o replay ([09:36] Sofia).
 
-### `prisma/schema.prisma`
+### FDD-INT-10: `prisma/schema.prisma`
 - O que existe hoje: identificadores UUID em `Char(36)` (linha 26) e o histórico de status como padrão de tabela de registro (linhas 116-131).
 - O que muda: as tabelas `webhook_outbox` ([09:06] Diego) e `webhook_dead_letter` ([09:18] Diego), a configuração de webhook ([09:21] Bruno) e o histórico de entregas ([09:34] Marcos), com UUID ([09:51] Larissa).
