@@ -10,7 +10,7 @@
 - **Questões em aberto do RFC.** O FDD não as decide sozinho. Quando um fluxo precisa de um comportamento para ser implementável, adota um default marcado como hipótese e aponta a questão do RFC.
 - **Probabilidade de risco omitida**, como no RFC: a reunião não estimou probabilidades. Cada risco traz impacto, mitigação e plano de contingência com fonte.
 - **Sem JSON de saída e sem mensagem inicial**, porque a entrevista não é conduzida com o usuário.
-- **Travessões removidos do esqueleto** ("status/header 1 — significado" vira "status/header 1: significado").
+- **Travessões removidos do esqueleto.** O original separa status e significado com travessão; aqui o separador é dois-pontos.
 
 ```text
 Pense profundamente (ultrathink) antes de escrever.
