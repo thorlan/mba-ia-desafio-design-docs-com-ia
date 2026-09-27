@@ -89,3 +89,11 @@ Cada entrada registra o que a IA produziu, o que a revisão encontrou e o que mu
 - **Hipóteses declaradas:** 11 defaults (H1 a H11) na seção 1, cada um ligado à questão do RFC que ele destrava, para o FDD ser implementável sem apresentar como decisão do time o que a reunião não decidiu.
 - **Erro encontrado numa ADR já mergeada:** ao ler as classes de erro para a matriz, a IA viu que a correção I1 da ADR-006 (Iteração 3) dizia que só as classes de conflito e de entidade não processável aceitam código próprio. A de requisição inválida também aceita (`src/shared/errors/http-errors.ts:4`). A ADR-006 foi corrigida neste PR. Esse detalhe importa, porque é por essa classe que `WEBHOOK_INVALID_URL` sai com status 400.
 - **Correções na verificação automática:** três referências de linha estavam erradas (paginação em `response.ts`, versão do Prisma e faixa de dependências no `package.json`). A causa foi ler arquivos concatenados, com a numeração contínua entre eles.
+
+## Iteração 6: PRD
+
+- **Prompt:** `prompts/07-prd-entrevista-adaptado.md`, adaptado do prompt de entrevista de PRD do curso e aprovado pelo usuário no PR antes da geração.
+- **Entrevista:** as fontes (RFC, FDD, ADRs, transcrição e código) responderam todas as etapas. O responsável já estava decidido (Diego, pelo revezamento da Iteração 5), então nenhuma pergunta foi levada ao usuário.
+- **Probabilidade dos riscos:** o enunciado exige probabilidade no PRD, e a reunião não estimou nenhuma. Cada uma veio com a evidência que a sustenta, por exemplo "Nenhum evento nosso vai chegar perto disso" ([09:24] Diego) para o limite de payload, ou ficou marcada como hipótese.
+- **Defaults do curso:** usados só onde a reunião não deu número (p95 de 150 ms nas rotas de cadastro e 99,9% de disponibilidade), marcados como hipótese.
+- **Títulos:** o PRD segue os títulos exatos do esqueleto do curso (com `###`), porque o prompt original pede isso explicitamente, diferente do RFC e do FDD.
