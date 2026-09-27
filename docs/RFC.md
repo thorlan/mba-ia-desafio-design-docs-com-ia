@@ -110,7 +110,6 @@ Estas lacunas não foram discutidas na reunião. Surgiram ao formalizar as decis
 | Risco | Impacto | Mitigação | Fonte |
 | --- | --- | --- | --- |
 | A transação de mudança de status, já pesada, fica mais lenta | Latência maior em toda mudança de status | Só grava evento quando algum webhook assina o status ([09:34] Bruno); o teto aceitável está em aberto (5.2) | [09:04] Bruno, [ADR-001](adrs/ADR-001-outbox-transacional-no-mysql.md) |
-| O worker de instância única para ou fica lento | Entregas atrasam para todos os clientes | Os eventos acumulam na outbox sem se perder; o monitoramento está em aberto (5.2) | [ADR-002](adrs/ADR-002-worker-em-processo-separado-com-polling.md) |
 | Um cliente não deduplica os eventos | O mesmo pedido é processado duas vezes do lado dele | Documentação em destaque no portal do desenvolvedor ([09:26] Marcos) | [09:25] Sofia |
 | Uma secret vaza | Terceiros forjam envios para aquele endpoint | Secret por endpoint, rotação com carência ([09:21] Sofia) e revisão de segurança antes do deploy ([09:46] Sofia); o logger atual não mascara secrets (`src/shared/logger/index.ts:4`) | [09:22] Diego |
 | O modelo de autorização é frouxo: qualquer usuário autenticado gerencia webhooks de qualquer customer, e o registro público aceita o papel de administrador | Acesso indevido à configuração e ao reprocessamento | Reprocessamento restrito a administradores ([09:36] Larissa); o tratamento detalhado fica no FDD e no PRD | [09:37] Sofia, `src/modules/auth/auth.schemas.ts:7` |
