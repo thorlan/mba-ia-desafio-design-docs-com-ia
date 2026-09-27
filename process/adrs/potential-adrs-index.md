@@ -127,3 +127,4 @@ Tomadas pelo autor do pacote na revisão dos Potential ADRs, não pelo time da r
 | ADR-004 | Proteção da secret em repouso |
 | ADR-005 | Mesmo identificador de evento quando há dois webhooks do mesmo customer |
 | ADR-006 | Validação do https no schema Zod gera `VALIDATION_ERROR`, não `WEBHOOK_INVALID_URL` |
+| Mapeamento (discrepância 7) | A criação do pedido grava o status inicial fora da mudança de status; a reunião não definiu se isso gera evento |
